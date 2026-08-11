@@ -10,4 +10,16 @@ onHide(() => {
   console.log("App Hide");
 });
 </script>
-<style></style>
+
+<style>
+page {
+  background: #f7f7f7;
+  color: #1f2937;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue",
+    "Microsoft YaHei", sans-serif;
+}
+
+button::after {
+  border: none;
+}
+</style>

@@ -3,7 +3,9 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "首页"
+        "navigationBarTitleText": "Mall精选",
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -21,7 +23,8 @@
     {
       "path": "pages/mine/index",
       "style": {
-        "navigationBarTitleText": "我的"
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -35,29 +38,37 @@
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "Mall",
     "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F5F6F8"
+    "backgroundColor": "#F7F7F7"
   },
   "tabBar": {
-    "color": "#6B7280",
-    "selectedColor": "#111827",
+    "color": "#B0B0B0",
+    "selectedColor": "#B0B0B0",
     "backgroundColor": "#FFFFFF",
-    "borderStyle": "black",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
       },
       {
         "pagePath": "pages/category/index",
-        "text": "分类"
+        "text": "分类",
+        "iconPath": "static/tab/category.png",
+        "selectedIconPath": "static/tab/category-active.png"
       },
       {
         "pagePath": "pages/cart/index",
-        "text": "购物车"
+        "text": "购物车",
+        "iconPath": "static/tab/cart.png",
+        "selectedIconPath": "static/tab/cart-active.png"
       },
       {
         "pagePath": "pages/mine/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "static/tab/mine.png",
+        "selectedIconPath": "static/tab/mine-active.png"
       }
     ]
   }
