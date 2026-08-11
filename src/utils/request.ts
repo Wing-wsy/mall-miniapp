@@ -6,6 +6,14 @@ export interface ApiResult<T = unknown> {
   data: T;
 }
 
+export class ApiError extends Error {
+  code: number;
+  constructor(code: number, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 export function request<T = unknown>(options: UniApp.RequestOptions) {
   const token = uni.getStorageSync("mall_app_token") || "";
   return new Promise<ApiResult<T>>((resolve, reject) => {
@@ -13,13 +21,18 @@ export function request<T = unknown>(options: UniApp.RequestOptions) {
       ...options,
       url: `${BASE_URL}${options.url}`,
       header: {
+        "Content-Type": "application/json",
         ...(options.header || {}),
         ...(token ? { Authorization: token } : {}),
       },
       success: (res) => {
         const body = res.data as ApiResult<T>;
         if (body && typeof body.code === "number" && body.code !== 0) {
-          reject(new Error(body.message || "请求失败"));
+          if (body.code === 401) {
+            uni.removeStorageSync("mall_app_token");
+            uni.removeStorageSync("mall_app_user");
+          }
+          reject(new ApiError(body.code, body.message || "请求失败"));
           return;
         }
         resolve(body);
