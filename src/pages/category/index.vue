@@ -1,52 +1,75 @@
 <template>
   <view class="page">
-    <scroll-view scroll-y class="side">
-      <view
-        v-for="(item, index) in categories"
-        :key="item.id"
-        class="side-item"
-        :class="{ active: index === active }"
-        @click="active = index"
-      >
-        <view v-if="index === active" class="active-bar" />
-        <text>{{ item.name }}</text>
-      </view>
-    </scroll-view>
-
-    <scroll-view scroll-y class="main">
-      <view class="main-title">{{ categories[active].name }}</view>
-      <view class="list">
+    <view v-if="loading" class="empty">加载中...</view>
+    <view v-else-if="!categories.length" class="empty">暂无分类</view>
+    <template v-else>
+      <scroll-view scroll-y class="side">
         <view
-          v-for="item in categories[active].children"
-          :key="item"
-          class="list-item"
-          @click="toast(item)"
+          v-for="(item, index) in categories"
+          :key="item.id"
+          class="side-item"
+          :class="{ active: index === active }"
+          @click="active = index"
         >
-          <view class="thumb">
-            <text>{{ item.slice(0, 1) }}</text>
-          </view>
-          <text class="name">{{ item }}</text>
+          <view v-if="index === active" class="active-bar" />
+          <text>{{ item.name }}</text>
         </view>
-      </view>
-    </scroll-view>
+      </scroll-view>
+
+      <scroll-view scroll-y class="main">
+        <view class="main-title">{{ current?.name }}</view>
+        <view class="list">
+          <view
+            v-for="item in current?.children || []"
+            :key="item.id"
+            class="list-item"
+            @click="goList(item)"
+          >
+            <view class="thumb">
+              <text>{{ item.name.slice(0, 1) }}</text>
+            </view>
+            <text class="name">{{ item.name }}</text>
+          </view>
+        </view>
+        <view v-if="!(current?.children || []).length" class="empty-inline">暂无二级分类</view>
+      </scroll-view>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { fetchProductCategoryTree, type CategoryNodeVO } from "@/api/category";
 
+const categories = ref<CategoryNodeVO[]>([]);
 const active = ref(0);
-const categories = [
-  { id: 1, name: "粮油调味", children: ["大米", "食用油", "酱油", "醋", "调味酱"] },
-  { id: 2, name: "休闲食品", children: ["坚果", "薯片", "饼干", "糖果", "肉脯"] },
-  { id: 3, name: "酒水饮料", children: ["矿泉水", "果汁", "茶叶", "咖啡", "碳酸饮料"] },
-  { id: 4, name: "个护清洁", children: ["牙膏", "洗发水", "沐浴露", "洗衣液", "纸巾"] },
-  { id: 5, name: "母婴用品", children: ["奶粉", "纸尿裤", "辅食", "湿巾", "玩具"] },
-];
+const loading = ref(false);
 
-function toast(name: string) {
-  uni.showToast({ title: name, icon: "none" });
+const current = computed(() => categories.value[active.value]);
+
+async function load() {
+  loading.value = true;
+  try {
+    const res = await fetchProductCategoryTree();
+    categories.value = res.data || [];
+    if (active.value >= categories.value.length) {
+      active.value = 0;
+    }
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || "加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
 }
+
+function goList(item: CategoryNodeVO) {
+  uni.navigateTo({
+    url: `/pages/goods/list?categoryId=${item.id}&title=${encodeURIComponent(item.name)}`,
+  });
+}
+
+onShow(load);
 </script>
 
 <style scoped>
@@ -84,15 +107,15 @@ function toast(name: string) {
   top: 30rpx;
   width: 6rpx;
   height: 40rpx;
-  border-radius: 0 6rpx 6rpx 0;
   background: #ff5a3d;
+  border-radius: 0 6rpx 6rpx 0;
 }
 
 .main {
   flex: 1;
-  height: 100%;
   background: #fff;
-  padding: 24rpx 24rpx 40rpx;
+  height: 100%;
+  padding: 24rpx 28rpx;
   box-sizing: border-box;
 }
 
@@ -100,7 +123,7 @@ function toast(name: string) {
   font-size: 30rpx;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 20rpx;
+  margin-bottom: 24rpx;
 }
 
 .list {
@@ -117,21 +140,29 @@ function toast(name: string) {
 }
 
 .thumb {
-  width: 110rpx;
-  height: 110rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 20rpx;
-  background: #fff4f1;
+  background: #ffe8e2;
   color: #ff5a3d;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 700;
   margin-bottom: 12rpx;
 }
 
 .name {
   font-size: 24rpx;
-  color: #4b5563;
+  color: #374151;
+}
+
+.empty,
+.empty-inline {
+  padding: 80rpx 40rpx;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 28rpx;
 }
 </style>

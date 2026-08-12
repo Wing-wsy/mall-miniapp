@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
-onLaunch(() => {
-  console.log("App Launch");
+import { onLaunch, onShow } from "@dcloudio/uni-app";
+import { useThemeStore } from "@/stores/theme";
+
+const themeStore = useThemeStore();
+
+onLaunch(async () => {
+  await themeStore.loadCurrent();
 });
-onShow(() => {
-  console.log("App Show");
-});
-onHide(() => {
-  console.log("App Hide");
+
+onShow(async () => {
+  // 回前台刷新皮肤；Tab 切换需在 tab 页生效
+  await themeStore.loadCurrent();
 });
 </script>
 

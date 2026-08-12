@@ -52,6 +52,18 @@
       }
     },
     {
+      "path": "pages/goods/list",
+      "style": {
+        "navigationBarTitleText": "商品列表"
+      }
+    },
+    {
+      "path": "pages/festival/index",
+      "style": {
+        "navigationBarTitleText": "节日礼品"
+      }
+    },
+    {
       "path": "pages/ping/index",
       "style": {
         "navigationBarTitleText": "联调探测"

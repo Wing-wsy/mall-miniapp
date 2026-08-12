@@ -13,6 +13,10 @@
       </view>
       <text class="name">{{ product.name }}</text>
       <text v-if="product.subtitle" class="subtitle">{{ product.subtitle }}</text>
+      <text v-if="product.categoryPath" class="meta">分类：{{ product.categoryPath }}</text>
+      <text v-if="product.festivalPaths?.length" class="meta">
+        节日：{{ product.festivalPaths.join("、") }}
+      </text>
     </view>
     <view class="panel">
       <text class="section">商品详情</text>
@@ -126,6 +130,13 @@ onLoad((query) => {
   margin-top: 10rpx;
   font-size: 26rpx;
   color: #6b7280;
+}
+
+.meta {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 
 .section {

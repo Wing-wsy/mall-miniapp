@@ -1,16 +1,21 @@
 <template>
-  <view class="page">
+  <view class="page" :style="pageStyle">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }" />
     <view class="nav">
-      <text class="brand">Mall</text>
+      <text class="brand" :style="{ color: themeStore.primary }">{{ themeStore.brandName }}</text>
       <view class="search" @click="toast('搜索稍后开放')">
         <text class="search-icon">⌕</text>
-        <text class="search-placeholder">搜索商品、品牌</text>
+        <text class="search-placeholder">{{ themeStore.searchPlaceholder }}</text>
       </view>
     </view>
 
     <scroll-view scroll-y class="scroll" :style="{ height: scrollHeight }">
+      <!-- 皮肤主视觉优先 -->
+      <view v-if="heroImageUrl" class="banner-swiper hero-wrap" @click="goFestival">
+        <image class="banner-img" :src="heroImageUrl" mode="aspectFill" />
+      </view>
       <swiper
+        v-else
         class="banner-swiper"
         circular
         autoplay
@@ -22,10 +27,10 @@
           <view v-if="item.imageUrl" class="banner-img-wrap">
             <image class="banner-img" :src="item.imageUrl" mode="aspectFill" />
           </view>
-          <view v-else class="banner-fallback">
-            <text class="banner-tag">今日精选</text>
-            <text class="banner-title">{{ item.title || "品质好物 用心挑选" }}</text>
-            <text class="banner-sub">点击查看商品详情</text>
+          <view v-else class="banner-fallback" :style="{ background: themeStore.primary }">
+            <text class="banner-tag">{{ heroTag }}</text>
+            <text class="banner-title">{{ item.title || heroTitle }}</text>
+            <text class="banner-sub">{{ heroSub }}</text>
           </view>
         </swiper-item>
       </swiper>
@@ -37,7 +42,7 @@
           class="entry"
           @click="onEntry(item)"
         >
-          <view class="entry-icon" :style="{ background: item.bg }">
+          <view class="entry-icon" :style="{ background: themeStore.tokens.primarySoft, color: themeStore.primary }">
             <text>{{ item.emoji }}</text>
           </view>
           <text class="entry-name">{{ item.name }}</text>
@@ -56,14 +61,15 @@
           class="goods-card"
           @click="goDetail(item.id)"
         >
-          <view class="goods-cover" :style="{ background: item.color }">
-            <text class="cover-text">{{ item.short }}</text>
+          <image v-if="item.coverUrl" class="goods-cover-img" :src="item.coverUrl" mode="aspectFill" />
+          <view v-else class="goods-cover" :style="{ background: themeStore.tokens.primarySoft }">
+            <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price">¥{{ item.price }}</text>
-              <text class="origin">¥{{ item.origin }}</text>
+              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ item.price }}</text>
+              <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
             </view>
           </view>
         </view>
@@ -74,27 +80,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchBannerList, type BannerVO } from "@/api/banner";
+import { fetchHotProducts, type ProductCardVO } from "@/api/product";
+import { useThemeStore } from "@/stores/theme";
 
+const themeStore = useThemeStore();
 const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
 const banners = ref<BannerVO[]>([]);
+const goods = ref<ProductCardVO[]>([]);
 
 const entries = [
-  { name: "分类", emoji: "▦", bg: "#FFE8E2", action: "category" },
-  { name: "新品", emoji: "✦", bg: "#FFF1D6", action: "toast" },
-  { name: "套餐", emoji: "▣", bg: "#E8F5E9", action: "toast" },
-  { name: "优惠", emoji: "%", bg: "#E3F2FD", action: "toast" },
+  { name: "分类", emoji: "▦", action: "category" },
+  { name: "节日", emoji: "✦", action: "festival" },
+  { name: "套餐", emoji: "▣", action: "toast" },
+  { name: "优惠", emoji: "%", action: "toast" },
 ];
 
-const goods = [
-  { id: 1, name: "有机燕麦片 1kg", short: "燕麦", price: "39.9", origin: "59.0", color: "#F3D6C8" },
-  { id: 2, name: "冷榨橄榄油 500ml", short: "橄榄油", price: "68.0", origin: "88.0", color: "#D9E8C8" },
-  { id: 3, name: "精选坚果礼盒", short: "坚果", price: "128.0", origin: "168.0", color: "#E8D5B7" },
-  { id: 4, name: "高山红茶 150g", short: "红茶", price: "56.0", origin: "79.0", color: "#E2C4B0" },
-];
+const pageStyle = computed(() => ({
+  background: themeStore.pageBg,
+}));
+
+const heroImageUrl = computed(() => themeStore.assets.heroImageUrl || "");
+const heroTag = computed(() => themeStore.copy.heroTag || "今日精选");
+const heroTitle = computed(() => themeStore.copy.heroTitle || "品质好物 用心挑选");
+const heroSub = computed(() => themeStore.copy.heroSub || "点击查看商品详情");
 
 try {
   const info = uni.getSystemInfoSync();
@@ -112,6 +124,10 @@ function goCategory() {
   uni.switchTab({ url: "/pages/category/index" });
 }
 
+function goFestival() {
+  uni.navigateTo({ url: "/pages/festival/index" });
+}
+
 function goDetail(id: number) {
   if (!id) {
     toast("商品不存在");
@@ -125,6 +141,10 @@ function onEntry(item: { action: string; name: string }) {
     goCategory();
     return;
   }
+  if (item.action === "festival") {
+    goFestival();
+    return;
+  }
   toast(`${item.name}即将上线`);
 }
 
@@ -133,21 +153,38 @@ async function loadBanners() {
     const res = await fetchBannerList();
     banners.value = res.data?.length
       ? res.data
-      : [{ id: 0, title: "品质好物 用心挑选", imageUrl: "", productId: 1 }];
+      : [{ id: 0, title: heroTitle.value, imageUrl: "", productId: 1 }];
   } catch (e) {
-    banners.value = [{ id: 0, title: "品质好物 用心挑选", imageUrl: "", productId: 1 }];
+    banners.value = [{ id: 0, title: heroTitle.value, imageUrl: "", productId: 1 }];
   }
 }
 
-onShow(() => {
+async function loadHot() {
+  try {
+    const res = await fetchHotProducts(8);
+    goods.value = res.data || [];
+  } catch (e) {
+    goods.value = [];
+  }
+}
+
+onShow(async () => {
+  await themeStore.loadCurrent();
+  if (themeStore.copy.navTitle) {
+    try {
+      uni.setNavigationBarTitle({ title: themeStore.copy.navTitle });
+    } catch (e) {
+      // custom nav 首页可能无效，忽略
+    }
+  }
   loadBanners();
+  loadHot();
 });
 </script>
 
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #f7f7f7;
 }
 
 .nav {
@@ -161,7 +198,6 @@ onShow(() => {
 .brand {
   font-size: 40rpx;
   font-weight: 800;
-  color: #ff5a3d;
   letter-spacing: 1rpx;
 }
 
@@ -190,7 +226,8 @@ onShow(() => {
   box-sizing: border-box;
 }
 
-.banner-swiper {
+.banner-swiper,
+.hero-wrap {
   margin: 24rpx 28rpx 0;
   height: 280rpx;
   border-radius: 24rpx;
@@ -211,7 +248,6 @@ onShow(() => {
 .banner-fallback {
   padding: 48rpx 40rpx;
   box-sizing: border-box;
-  background: #ff5a3d;
   color: #fff;
 }
 
@@ -261,7 +297,6 @@ onShow(() => {
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
-  color: #ff5a3d;
 }
 
 .entry-name {
@@ -308,6 +343,12 @@ onShow(() => {
   justify-content: center;
 }
 
+.goods-cover-img {
+  width: 100%;
+  height: 260rpx;
+  display: block;
+}
+
 .cover-text {
   font-size: 36rpx;
   font-weight: 700;
@@ -334,7 +375,6 @@ onShow(() => {
 }
 
 .price {
-  color: #ff5a3d;
   font-size: 32rpx;
   font-weight: 700;
 }
