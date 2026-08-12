@@ -10,13 +10,25 @@
     </view>
 
     <scroll-view scroll-y class="scroll" :style="{ height: scrollHeight }">
-      <view class="banner">
-        <view class="banner-inner">
-          <text class="banner-tag">今日精选</text>
-          <text class="banner-title">品质好物 用心挑选</text>
-          <text class="banner-sub">新客下单享专属优惠</text>
-        </view>
-      </view>
+      <swiper
+        class="banner-swiper"
+        circular
+        autoplay
+        indicator-dots
+        indicator-color="rgba(255,255,255,0.45)"
+        indicator-active-color="#ffffff"
+      >
+        <swiper-item v-for="item in banners" :key="item.id" @click="goDetail(item.productId)">
+          <view v-if="item.imageUrl" class="banner-img-wrap">
+            <image class="banner-img" :src="item.imageUrl" mode="aspectFill" />
+          </view>
+          <view v-else class="banner-fallback">
+            <text class="banner-tag">今日精选</text>
+            <text class="banner-title">{{ item.title || "品质好物 用心挑选" }}</text>
+            <text class="banner-sub">点击查看商品详情</text>
+          </view>
+        </swiper-item>
+      </swiper>
 
       <view class="entry-grid">
         <view
@@ -42,7 +54,7 @@
           v-for="item in goods"
           :key="item.id"
           class="goods-card"
-          @click="toast(item.name)"
+          @click="goDetail(item.id)"
         >
           <view class="goods-cover" :style="{ background: item.color }">
             <text class="cover-text">{{ item.short }}</text>
@@ -63,9 +75,12 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { fetchBannerList, type BannerVO } from "@/api/banner";
 
 const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
+const banners = ref<BannerVO[]>([]);
 
 const entries = [
   { name: "分类", emoji: "▦", bg: "#FFE8E2", action: "category" },
@@ -97,6 +112,14 @@ function goCategory() {
   uni.switchTab({ url: "/pages/category/index" });
 }
 
+function goDetail(id: number) {
+  if (!id) {
+    toast("商品不存在");
+    return;
+  }
+  uni.navigateTo({ url: `/pages/goods/detail?id=${id}` });
+}
+
 function onEntry(item: { action: string; name: string }) {
   if (item.action === "category") {
     goCategory();
@@ -104,6 +127,21 @@ function onEntry(item: { action: string; name: string }) {
   }
   toast(`${item.name}即将上线`);
 }
+
+async function loadBanners() {
+  try {
+    const res = await fetchBannerList();
+    banners.value = res.data?.length
+      ? res.data
+      : [{ id: 0, title: "品质好物 用心挑选", imageUrl: "", productId: 1 }];
+  } catch (e) {
+    banners.value = [{ id: 0, title: "品质好物 用心挑选", imageUrl: "", productId: 1 }];
+  }
+}
+
+onShow(() => {
+  loadBanners();
+});
 </script>
 
 <style scoped>
@@ -152,15 +190,28 @@ function onEntry(item: { action: string; name: string }) {
   box-sizing: border-box;
 }
 
-.banner {
+.banner-swiper {
   margin: 24rpx 28rpx 0;
+  height: 280rpx;
   border-radius: 24rpx;
   overflow: hidden;
-  background: #ff5a3d;
 }
 
-.banner-inner {
+.banner-img-wrap,
+.banner-fallback {
+  width: 100%;
+  height: 280rpx;
+}
+
+.banner-img {
+  width: 100%;
+  height: 280rpx;
+}
+
+.banner-fallback {
   padding: 48rpx 40rpx;
+  box-sizing: border-box;
+  background: #ff5a3d;
   color: #fff;
 }
 

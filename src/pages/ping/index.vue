@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <button type="primary" :loading="loading" @click="runPing">请求 /ping</button>
+    <button :loading="loading" class="ping-btn" @click="runPing">请求 /ping</button>
     <view v-if="error" class="error">{{ error }}</view>
     <view v-if="result" class="result">{{ result }}</view>
   </view>
@@ -32,6 +32,10 @@ async function runPing() {
 <style scoped>
 .page {
   padding: 48rpx;
+}
+.ping-btn {
+  background: #ff5a3d;
+  color: #fff;
 }
 .error {
   margin-top: 24rpx;
