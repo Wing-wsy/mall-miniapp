@@ -1,15 +1,23 @@
 <template>
   <view class="page" v-if="product">
-    <view class="cover-wrap">
-      <image v-if="product.coverUrl" class="cover" :src="product.coverUrl" mode="aspectFill" />
-      <view v-else class="cover-fallback">
-        <text>{{ product.name }}</text>
-      </view>
+    <swiper
+      v-if="gallery.length"
+      class="cover-swiper"
+      :indicator-dots="gallery.length > 1"
+      indicator-color="rgba(255,255,255,0.45)"
+      indicator-active-color="#ffffff"
+    >
+      <swiper-item v-for="(url, index) in gallery" :key="index" @click="preview(index)">
+        <image class="cover" :src="url" mode="aspectFit" />
+      </swiper-item>
+    </swiper>
+    <view v-else class="cover-fallback">
+      <text>{{ product.name }}</text>
     </view>
     <view class="panel">
       <view class="price-row">
-        <text class="price">¥{{ product.price }}</text>
-        <text v-if="product.originPrice" class="origin">¥{{ product.originPrice }}</text>
+        <text class="price">¥{{ displayPrice }}</text>
+        <text v-if="displayOriginPrice" class="origin">¥{{ displayOriginPrice }}</text>
       </view>
       <text class="name">{{ product.name }}</text>
       <text v-if="product.subtitle" class="subtitle">{{ product.subtitle }}</text>
@@ -18,9 +26,32 @@
         节日：{{ product.festivalPaths.join("、") }}
       </text>
     </view>
+    <view v-if="skus.length" class="panel">
+      <text class="section">规格</text>
+      <view class="spec-list">
+        <view
+          v-for="sku in skus"
+          :key="sku.id"
+          class="spec-chip"
+          :class="{ active: selectedSkuId === sku.id }"
+          @click="selectedSkuId = sku.id"
+        >
+          <text>{{ sku.specName }}</text>
+        </view>
+      </view>
+    </view>
     <view class="panel">
       <text class="section">商品详情</text>
-      <text class="detail">{{ product.detailHtml || "暂无详情" }}</text>
+      <text v-if="product.detailHtml" class="detail">{{ product.detailHtml }}</text>
+      <image
+        v-for="(url, index) in detailImages"
+        :key="index"
+        class="detail-img"
+        :src="url"
+        mode="widthFix"
+        @click="previewDetail(index)"
+      />
+      <text v-if="!product.detailHtml && !detailImages.length" class="detail">暂无详情</text>
     </view>
     <view class="bottom-bar">
       <button class="buy-btn" @click="toast('加购即将上线')">加入购物车</button>
@@ -32,15 +63,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { fetchProductDetail, type ProductDetailVO } from "@/api/product";
+import { fetchProductDetail, type ProductDetailVO, type ProductSkuVO } from "@/api/product";
 
 const product = ref<ProductDetailVO | null>(null);
+const selectedSkuId = ref<number | null>(null);
 const error = ref("");
+
+const gallery = computed(() => {
+  const urls = (product.value?.galleryUrls || []).filter(Boolean);
+  if (urls.length) {
+    return urls;
+  }
+  return product.value?.coverUrl ? [product.value.coverUrl] : [];
+});
+
+const detailImages = computed(() => (product.value?.detailImageUrls || []).filter(Boolean));
+
+const skus = computed<ProductSkuVO[]>(() => product.value?.skus || []);
+
+const selectedSku = computed(() => skus.value.find((sku) => sku.id === selectedSkuId.value) || skus.value[0]);
+
+const displayPrice = computed(() => selectedSku.value?.price ?? product.value?.price);
+
+const displayOriginPrice = computed(() => selectedSku.value?.originPrice ?? product.value?.originPrice);
 
 function toast(msg: string) {
   uni.showToast({ title: msg, icon: "none" });
+}
+
+function preview(index: number) {
+  uni.previewImage({ current: gallery.value[index], urls: gallery.value });
+}
+
+function previewDetail(index: number) {
+  uni.previewImage({ current: detailImages.value[index], urls: detailImages.value });
 }
 
 onLoad((query) => {
@@ -52,6 +110,8 @@ onLoad((query) => {
   fetchProductDetail(id)
     .then((res) => {
       product.value = res.data;
+      const first = res.data?.skus?.[0];
+      selectedSkuId.value = first ? first.id : null;
     })
     .catch((e: unknown) => {
       error.value = e instanceof Error ? e.message : "加载失败";
@@ -66,20 +126,19 @@ onLoad((query) => {
   padding-bottom: 140rpx;
 }
 
-.cover-wrap {
+.cover-swiper,
+.cover-fallback {
   width: 100%;
-  height: 680rpx;
+  height: 750rpx;
   background: #fff;
 }
 
 .cover {
   width: 100%;
-  height: 680rpx;
+  height: 750rpx;
 }
 
 .cover-fallback {
-  width: 100%;
-  height: 680rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -139,6 +198,26 @@ onLoad((query) => {
   color: #9ca3af;
 }
 
+.spec-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.spec-chip {
+  padding: 12rpx 28rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 26rpx;
+}
+
+.spec-chip.active {
+  background: #fff1ee;
+  color: #ff5a3d;
+  font-weight: 700;
+}
+
 .section {
   display: block;
   font-size: 30rpx;
@@ -150,6 +229,12 @@ onLoad((query) => {
   font-size: 28rpx;
   color: #4b5563;
   line-height: 1.7;
+}
+
+.detail-img {
+  width: 100%;
+  margin-top: 16rpx;
+  display: block;
 }
 
 .bottom-bar {

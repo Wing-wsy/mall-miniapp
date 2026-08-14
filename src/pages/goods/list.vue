@@ -4,14 +4,17 @@
     <view v-else-if="!list.length" class="empty">暂无商品</view>
     <view v-else class="goods-grid">
       <view v-for="item in list" :key="item.id" class="goods-card" @click="goDetail(item.id)">
-        <image v-if="item.coverUrl" class="cover-img" :src="item.coverUrl" mode="aspectFill" />
-        <view v-else class="cover-fallback">
-          <text>{{ (item.name || "").slice(0, 1) }}</text>
+        <view class="cover-wrap">
+          <image v-if="item.coverUrl" class="cover-img" :src="item.coverUrl" mode="aspectFill" />
+          <view v-else class="cover-fallback">
+            <text>{{ (item.name || "").slice(0, 1) }}</text>
+          </view>
         </view>
         <view class="body">
           <text class="name">{{ item.name }}</text>
           <view class="price-row">
             <text class="price">¥{{ item.price }}</text>
+            <text v-if="item.multiSpec" class="from">起</text>
             <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
           </view>
         </view>
@@ -82,10 +85,21 @@ onLoad((query) => load((query || {}) as Record<string, string | undefined>));
   margin-bottom: 20rpx;
 }
 
+.cover-wrap {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  overflow: hidden;
+}
+
 .cover-img,
 .cover-fallback {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 100%;
-  height: 280rpx;
+  height: 100%;
 }
 
 .cover-fallback {
@@ -127,6 +141,11 @@ onLoad((query) => load((query || {}) as Record<string, string | undefined>));
   color: #9ca3af;
   font-size: 22rpx;
   text-decoration: line-through;
+}
+
+.from {
+  color: #ff5a3d;
+  font-size: 22rpx;
 }
 
 .empty {

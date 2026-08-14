@@ -35,40 +35,67 @@
         </swiper-item>
       </swiper>
 
-      <view class="entry-grid">
-        <view
-          v-for="item in entries"
-          :key="item.name"
-          class="entry"
-          @click="onEntry(item)"
-        >
-          <view class="entry-icon" :style="{ background: themeStore.tokens.primarySoft, color: themeStore.primary }">
-            <text>{{ item.emoji }}</text>
+      <swiper
+        v-if="entryPages.length"
+        class="entry-swiper"
+        :indicator-dots="entryPages.length > 1"
+        indicator-color="#e5e7eb"
+        indicator-active-color="#9ca3af"
+      >
+        <swiper-item v-for="(page, pageIndex) in entryPages" :key="pageIndex">
+          <view class="entry-grid">
+            <view
+              v-for="item in page"
+              :key="item.id"
+              class="entry"
+              @click="onEntry(item)"
+            >
+              <view
+                class="entry-icon"
+                :class="{ 'is-custom': !!item.iconUrl }"
+                :style="item.iconUrl ? undefined : { background: themeStore.tokens.primarySoft, color: themeStore.primary }"
+              >
+                <image
+                  class="entry-icon-img"
+                  :src="entryIcon(item)"
+                  :mode="item.iconUrl ? 'aspectFill' : 'aspectFit'"
+                />
+              </view>
+              <text class="entry-name">{{ item.title }}</text>
+            </view>
           </view>
-          <text class="entry-name">{{ item.name }}</text>
-        </view>
-      </view>
+        </swiper-item>
+      </swiper>
 
       <view class="section-head">
         <text class="section-title">热卖推荐</text>
         <text class="section-more" @click="goCategory">全部</text>
       </view>
 
-      <view class="goods-grid">
+      <view v-if="!goods.length" class="hot-empty">暂无热卖商品</view>
+      <view v-else class="goods-grid">
         <view
           v-for="item in goods"
           :key="item.id"
           class="goods-card"
           @click="goDetail(item.id)"
         >
-          <image v-if="item.coverUrl" class="goods-cover-img" :src="item.coverUrl" mode="aspectFill" />
-          <view v-else class="goods-cover" :style="{ background: themeStore.tokens.primarySoft }">
-            <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
+          <view class="goods-cover" :style="{ background: themeStore.tokens.primarySoft }">
+            <image
+              v-if="item.coverUrl"
+              class="goods-cover-img"
+              :src="item.coverUrl"
+              mode="aspectFill"
+            />
+            <view v-else class="cover-fallback">
+              <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
+            </view>
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
             <view class="price-row">
               <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ item.price }}</text>
+              <text v-if="item.multiSpec" class="from">起</text>
               <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
             </view>
           </view>
@@ -83,6 +110,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchBannerList, type BannerVO } from "@/api/banner";
+import { fetchNavEntryList, type NavEntryVO } from "@/api/navEntry";
 import { fetchHotProducts, type ProductCardVO } from "@/api/product";
 import { useThemeStore } from "@/stores/theme";
 
@@ -91,13 +119,48 @@ const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
 const banners = ref<BannerVO[]>([]);
 const goods = ref<ProductCardVO[]>([]);
+const entries = ref<NavEntryVO[]>([]);
 
-const entries = [
-  { name: "分类", emoji: "▦", action: "category" },
-  { name: "节日", emoji: "✦", action: "festival" },
-  { name: "套餐", emoji: "▣", action: "toast" },
-  { name: "优惠", emoji: "%", action: "toast" },
+const FALLBACK_ENTRIES: NavEntryVO[] = [
+  { id: -1, title: "分类", iconUrl: "", linkType: "category", linkValue: "" },
+  { id: -2, title: "节日", iconUrl: "", linkType: "festival", linkValue: "" },
+  { id: -3, title: "套餐", iconUrl: "", linkType: "none", linkValue: "" },
+  { id: -4, title: "优惠", iconUrl: "", linkType: "none", linkValue: "" },
 ];
+
+const TYPE_ICONS: Record<string, string> = {
+  category: "/static/nav/category.png",
+  festival: "/static/nav/festival.png",
+  goodsList: "/static/nav/goodsList.png",
+  festivalGoods: "/static/nav/festivalGoods.png",
+  product: "/static/nav/product.png",
+  page: "/static/nav/page.png",
+  none: "/static/nav/none.png",
+};
+
+function entryIcon(item: NavEntryVO) {
+  return item.iconUrl || TYPE_ICONS[item.linkType] || TYPE_ICONS.none;
+}
+
+const PAGE_SIZE = 10;
+const TAB_PAGES = [
+  "/pages/index/index",
+  "/pages/category/index",
+  "/pages/cart/index",
+  "/pages/mine/index",
+];
+
+const entryPages = computed(() => {
+  const list = entries.value;
+  if (!list.length) {
+    return [];
+  }
+  const pages: NavEntryVO[][] = [];
+  for (let i = 0; i < list.length; i += PAGE_SIZE) {
+    pages.push(list.slice(i, i + PAGE_SIZE));
+  }
+  return pages;
+});
 
 const pageStyle = computed(() => ({
   background: themeStore.pageBg,
@@ -136,16 +199,60 @@ function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/goods/detail?id=${id}` });
 }
 
-function onEntry(item: { action: string; name: string }) {
-  if (item.action === "category") {
+function goGoodsList(query: string, title: string) {
+  uni.navigateTo({
+    url: `/pages/goods/list?${query}&title=${encodeURIComponent(title || "商品列表")}`,
+  });
+}
+
+function goPage(path: string) {
+  const url = path.startsWith("/") ? path : `/${path}`;
+  if (TAB_PAGES.includes(url.split("?")[0])) {
+    uni.switchTab({ url: url.split("?")[0] });
+    return;
+  }
+  uni.navigateTo({ url });
+}
+
+function onEntry(item: NavEntryVO) {
+  const value = (item.linkValue || "").trim();
+  if (item.linkType === "category") {
     goCategory();
     return;
   }
-  if (item.action === "festival") {
+  if (item.linkType === "festival") {
     goFestival();
     return;
   }
-  toast(`${item.name}即将上线`);
+  if (item.linkType === "product") {
+    goDetail(Number(value));
+    return;
+  }
+  if (item.linkType === "goodsList") {
+    if (!value) {
+      toast("分类不存在");
+      return;
+    }
+    goGoodsList(`categoryId=${value}`, item.title);
+    return;
+  }
+  if (item.linkType === "festivalGoods") {
+    if (!value) {
+      toast("分类不存在");
+      return;
+    }
+    goGoodsList(`festivalId=${value}`, item.title);
+    return;
+  }
+  if (item.linkType === "page") {
+    if (!value.startsWith("/pages/")) {
+      toast("页面不存在");
+      return;
+    }
+    goPage(value);
+    return;
+  }
+  toast(`${item.title}即将上线`);
 }
 
 async function loadBanners() {
@@ -168,6 +275,15 @@ async function loadHot() {
   }
 }
 
+async function loadNavEntries() {
+  try {
+    const res = await fetchNavEntryList();
+    entries.value = res.data?.length ? res.data : FALLBACK_ENTRIES;
+  } catch (e) {
+    entries.value = FALLBACK_ENTRIES;
+  }
+}
+
 onShow(async () => {
   await themeStore.loadCurrent();
   if (themeStore.copy.navTitle) {
@@ -178,6 +294,7 @@ onShow(async () => {
     }
   }
   loadBanners();
+  loadNavEntries();
   loadHot();
 });
 </script>
@@ -273,35 +390,62 @@ onShow(async () => {
   opacity: 0.9;
 }
 
-.entry-grid {
+.entry-swiper {
   margin: 28rpx;
-  padding: 28rpx 12rpx;
+  height: 360rpx;
   background: #fff;
   border-radius: 24rpx;
+}
+
+.entry-grid {
   display: flex;
+  flex-wrap: wrap;
+  padding: 20rpx 0 8rpx;
 }
 
 .entry {
-  flex: 1;
+  width: 20%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12rpx;
+  gap: 10rpx;
+  margin-bottom: 16rpx;
 }
 
 .entry-icon {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 24rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32rpx;
+  overflow: hidden;
+}
+
+.entry-icon-img {
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.entry-icon.is-custom {
+  background: transparent;
+}
+
+.entry-icon.is-custom .entry-icon-img {
+  width: 140%;
+  height: 140%;
+  flex-shrink: 0;
 }
 
 .entry-name {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #4b5563;
+  max-width: 100%;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .section-head {
@@ -322,31 +466,52 @@ onShow(async () => {
   color: #9ca3af;
 }
 
+.hot-empty {
+  margin: 0 28rpx 24rpx;
+  padding: 48rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #9ca3af;
+  background: #fff;
+  border-radius: 20rpx;
+}
+
 .goods-grid {
   margin: 0 20rpx;
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 .goods-card {
-  width: calc(50% - 16rpx);
-  margin: 8rpx;
+  width: 48.5%;
+  margin-bottom: 16rpx;
   background: #fff;
   border-radius: 20rpx;
   overflow: hidden;
 }
 
 .goods-cover {
-  height: 260rpx;
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  overflow: hidden;
+}
+
+.goods-cover-img,
+.cover-fallback {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cover-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.goods-cover-img {
-  width: 100%;
-  height: 260rpx;
-  display: block;
 }
 
 .cover-text {
@@ -383,6 +548,10 @@ onShow(async () => {
   color: #c0c4cc;
   font-size: 22rpx;
   text-decoration: line-through;
+}
+
+.from {
+  font-size: 22rpx;
 }
 
 .safe-bottom {

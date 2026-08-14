@@ -1,16 +1,27 @@
 import { request } from "@/utils/request";
 
+export interface ProductSkuVO {
+  id: number;
+  specId: number;
+  specName: string;
+  price: number | string;
+  originPrice?: number | string;
+}
+
 export interface ProductDetailVO {
   id: number;
   name: string;
   subtitle?: string;
   coverUrl?: string;
+  galleryUrls?: string[];
   price: number | string;
   originPrice?: number | string;
   detailHtml?: string;
+  detailImageUrls?: string[];
   categoryId?: number;
   categoryPath?: string;
   festivalPaths?: string[];
+  skus?: ProductSkuVO[];
 }
 
 export interface ProductCardVO {
@@ -20,6 +31,7 @@ export interface ProductCardVO {
   coverUrl?: string;
   price: number | string;
   originPrice?: number | string;
+  multiSpec?: boolean;
 }
 
 export function fetchProductDetail(id: number) {
