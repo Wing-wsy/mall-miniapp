@@ -6,6 +6,27 @@ export interface ProductSkuVO {
   specName: string;
   price: number | string;
   originPrice?: number | string;
+  isBase?: number;
+  convertQty?: number;
+  sellableQty?: number;
+}
+
+export interface ProductDetailVO {
+  id: number;
+  name: string;
+  subtitle?: string;
+  coverUrl?: string;
+  galleryUrls?: string[];
+  price: number | string;
+  originPrice?: number | string;
+  detailHtml?: string;
+  detailImageUrls?: string[];
+  categoryId?: number;
+  categoryPath?: string;
+  festivalPaths?: string[];
+  stock?: number;
+  baseSpecName?: string;
+  skus?: ProductSkuVO[];
 }
 
 export interface ProductDetailVO {

@@ -12,16 +12,16 @@
     </view>
 
     <view class="stats">
-      <view class="stat" @click="requireLoginThenToast('订单')">
-        <text class="num">0</text>
+      <view class="stat" @click="goOrders(10)">
+        <text class="num">{{ counts.unpaid }}</text>
         <text class="label">待付款</text>
       </view>
-      <view class="stat" @click="requireLoginThenToast('订单')">
-        <text class="num">0</text>
+      <view class="stat" @click="goOrders(30)">
+        <text class="num">{{ counts.waitRecv }}</text>
         <text class="label">待收货</text>
       </view>
-      <view class="stat" @click="requireLoginThenToast('订单')">
-        <text class="num">0</text>
+      <view class="stat" @click="goOrders(40)">
+        <text class="num">{{ counts.done }}</text>
         <text class="label">已完成</text>
       </view>
     </view>
@@ -46,6 +46,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
+import { fetchOrderCounts } from "@/api/order";
 
 const userStore = useUserStore();
 const statusBarHeight = ref(20);
@@ -57,12 +58,14 @@ try {
 
 const menus = [
   { name: "收货地址", action: "address" },
-  { name: "我的订单", action: "needLogin" },
-  { name: "优惠套餐", action: "needLogin" },
+  { name: "我的订单", action: "orders" },
+  { name: "我的优惠券", action: "coupons" },
+  { name: "领券中心", action: "couponActivity" },
   { name: "联系客服", action: "toast" },
   { name: "联调探测", action: "ping" },
 ];
 
+const counts = ref({ unpaid: 0, waitRecv: 0, done: 0 });
 const displayName = computed(() =>
   userStore.isLogin ? userStore.userInfo?.nickname || "微信用户" : "点击登录"
 );
@@ -76,6 +79,19 @@ onShow(() => {
     userStore.refreshProfile().catch(() => {
       userStore.clearSession();
     });
+    fetchOrderCounts()
+      .then((res) => {
+        counts.value = {
+          unpaid: res.data?.unpaid || 0,
+          waitRecv: res.data?.waitRecv || 0,
+          done: res.data?.done || 0,
+        };
+      })
+      .catch(() => {
+        counts.value = { unpaid: 0, waitRecv: 0, done: 0 };
+      });
+  } else {
+    counts.value = { unpaid: 0, waitRecv: 0, done: 0 };
   }
 });
 
@@ -93,12 +109,13 @@ function toast(msg: string) {
   uni.showToast({ title: `${msg}稍后开放`, icon: "none" });
 }
 
-function requireLoginThenToast(msg: string) {
+function goOrders(status?: number) {
   if (!userStore.isLogin) {
     goLogin();
     return;
   }
-  toast(msg);
+  const q = status != null ? `?status=${status}` : "";
+  uni.navigateTo({ url: `/pages/order/list${q}` });
 }
 
 function onMenu(item: { name: string; action: string }) {
@@ -114,8 +131,24 @@ function onMenu(item: { name: string; action: string }) {
     uni.navigateTo({ url: "/pages/address/list" });
     return;
   }
-  if (item.action === "needLogin") {
-    requireLoginThenToast(item.name);
+  if (item.action === "orders") {
+    goOrders();
+    return;
+  }
+  if (item.action === "coupons") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/coupon/list" });
+    return;
+  }
+  if (item.action === "couponActivity") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/coupon/activity" });
     return;
   }
   toast(item.name);

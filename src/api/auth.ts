@@ -1,7 +1,7 @@
 import { request } from "@/utils/request";
 
 export interface MemberVO {
-  id: number;
+  memberNo?: string;
   nickname: string;
   avatarUrl?: string;
   phone?: string;

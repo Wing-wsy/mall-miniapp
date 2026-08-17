@@ -7,7 +7,7 @@
     </view>
     <view v-else class="list">
       <view v-for="item in list" :key="item.id" class="card">
-        <view class="card-main" @click="goEdit(item.id)">
+        <view class="card-main" @click="onCard(item)">
           <view class="row-top">
             <text class="name">{{ item.receiverName }}</text>
             <text class="phone">{{ item.receiverPhone }}</text>
@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import {
   deleteAddress,
   fetchAddressList,
@@ -43,6 +43,14 @@ import { useUserStore } from "@/stores/user";
 const userStore = useUserStore();
 const list = ref<AddressVO[]>([]);
 const loading = ref(false);
+const selectMode = ref(false);
+
+onLoad((query) => {
+  selectMode.value = (query && query.from) === "order";
+  if (selectMode.value) {
+    uni.setNavigationBarTitle({ title: "选择收货地址" });
+  }
+});
 
 onShow(() => {
   if (!userStore.isLogin) {
@@ -70,6 +78,15 @@ async function loadList() {
 
 function goAdd() {
   uni.navigateTo({ url: "/pages/address/edit" });
+}
+
+function onCard(item: AddressVO) {
+  if (selectMode.value) {
+    uni.setStorageSync("mall_order_address_id", item.id);
+    uni.navigateBack();
+    return;
+  }
+  goEdit(item.id);
 }
 
 function goEdit(id: number) {

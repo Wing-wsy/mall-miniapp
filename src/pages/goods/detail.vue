@@ -33,10 +33,20 @@
           v-for="sku in skus"
           :key="sku.id"
           class="spec-chip"
-          :class="{ active: selectedSkuId === sku.id }"
+          :class="{ active: selectedSkuId === sku.id, sold: (sku.sellableQty || 0) <= 0 }"
           @click="selectedSkuId = sku.id"
         >
           <text>{{ sku.specName }}</text>
+        </view>
+      </view>
+      <text v-if="convertHint" class="meta">{{ convertHint }}</text>
+      <text class="meta">{{ stockHint }}</text>
+      <view class="qty-row">
+        <text class="qty-label">数量</text>
+        <view class="qty">
+          <text class="btn" @click="changeQty(-1)">−</text>
+          <text class="num">{{ qty }}</text>
+          <text class="btn" @click="changeQty(1)">+</text>
         </view>
       </view>
     </view>
@@ -54,7 +64,9 @@
       <text v-if="!product.detailHtml && !detailImages.length" class="detail">暂无详情</text>
     </view>
     <view class="bottom-bar">
-      <button class="buy-btn" @click="toast('加购即将上线')">加入购物车</button>
+      <button class="buy-btn" :disabled="adding || !canAdd" @click="onAddCart">
+        {{ canAdd ? "加入购物车" : "已售罄" }}
+      </button>
     </view>
   </view>
   <view v-else class="loading">
@@ -63,13 +75,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { fetchProductDetail, type ProductDetailVO, type ProductSkuVO } from "@/api/product";
+import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
+import { ApiError } from "@/utils/request";
+import { useUserStore } from "@/stores/user";
 
+const userStore = useUserStore();
 const product = ref<ProductDetailVO | null>(null);
 const selectedSkuId = ref<number | null>(null);
+const qty = ref(1);
+const adding = ref(false);
 const error = ref("");
+const cartItems = ref<CartItemVO[]>([]);
+const fromCartId = ref(0);
+const fromCartSkuId = ref(0);
 
 const gallery = computed(() => {
   const urls = (product.value?.galleryUrls || []).filter(Boolean);
@@ -89,8 +110,160 @@ const displayPrice = computed(() => selectedSku.value?.price ?? product.value?.p
 
 const displayOriginPrice = computed(() => selectedSku.value?.originPrice ?? product.value?.originPrice);
 
+const existingQty = computed(() => {
+  const skuId = selectedSku.value?.id;
+  if (!skuId) {
+    return 0;
+  }
+  return cartItems.value.find((item) => item.skuId === skuId)?.quantity || 0;
+});
+
+const remainingSellable = computed(() => {
+  const sku = selectedSku.value;
+  const stock = product.value?.stock ?? 0;
+  if (!sku) {
+    return 0;
+  }
+  const convertQty = sku.convertQty && sku.convertQty > 0 ? sku.convertQty : 1;
+  const occupiedOther = cartItems.value.reduce((sum, item) => {
+    if (item.skuId === sku.id) {
+      return sum;
+    }
+    const itemConvert = item.convertQty && item.convertQty > 0 ? item.convertQty : 1;
+    return sum + (item.quantity || 0) * itemConvert;
+  }, 0);
+  return Math.floor(Math.max(0, stock - occupiedOther) / convertQty);
+});
+
+const editingCart = computed(
+  () => fromCartId.value > 0 && !!selectedSkuId.value && selectedSkuId.value === fromCartSkuId.value,
+);
+
+const maxQty = computed(() => {
+  if (editingCart.value) {
+    return remainingSellable.value;
+  }
+  return Math.max(0, remainingSellable.value - existingQty.value);
+});
+
+const canAdd = computed(() => !!selectedSku.value && remainingSellable.value > 0);
+
+const convertHint = computed(() => {
+  const sku = selectedSku.value;
+  const baseName = product.value?.baseSpecName;
+  if (!sku || sku.isBase === 1 || !sku.convertQty || sku.convertQty <= 1 || !baseName) {
+    return "";
+  }
+  return `1${sku.specName} = ${sku.convertQty}${baseName}`;
+});
+
+const stockHint = computed(() => {
+  const stock = product.value?.stock ?? 0;
+  const baseName = product.value?.baseSpecName || "";
+  const sku = selectedSku.value;
+  if (!sku) {
+    return `库存 ${stock}${baseName}`;
+  }
+  const spec = sku.specName || "";
+  let text = `库存 ${stock}${baseName}，本规格可购 ${remainingSellable.value}${spec}`;
+  if (!editingCart.value && existingQty.value > 0) {
+    text += `，还可加购 ${maxQty.value}${spec}`;
+  }
+  return text;
+});
+
+watch(selectedSkuId, (_next, prev) => {
+  if (prev == null) {
+    return;
+  }
+  qty.value = 1;
+});
+
+function changeQty(delta: number) {
+  const next = qty.value + delta;
+  if (next < 1) {
+    return;
+  }
+  if (next > maxQty.value) {
+    toast(maxQty.value <= 0 ? "已售罄" : `最多可购 ${maxQty.value}`);
+    return;
+  }
+  qty.value = next;
+}
+
+async function loadCartOccupancy() {
+  if (!userStore.isLogin || !product.value?.id) {
+    cartItems.value = [];
+    return;
+  }
+  try {
+    const res = await fetchCartList();
+    const productId = product.value.id;
+    cartItems.value = (res.data?.items || []).filter((item) => item.productId === productId);
+  } catch {
+    cartItems.value = [];
+  }
+}
+
+function goLogin() {
+  uni.navigateTo({ url: "/pages/login/index" });
+}
+
+async function refreshBadge() {
+  try {
+    const res = await fetchCartCount();
+    const n = res.data?.totalQuantity || 0;
+    if (n > 0) {
+      uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
+    } else {
+      uni.removeTabBarBadge({ index: 2 });
+    }
+  } catch {
+    uni.removeTabBarBadge({ index: 2 });
+  }
+}
+
 function toast(msg: string) {
   uni.showToast({ title: msg, icon: "none" });
+}
+
+async function onAddCart() {
+  if (!selectedSku.value) {
+    toast("请选择规格");
+    return;
+  }
+  if (!canAdd.value) {
+    toast("已售罄");
+    return;
+  }
+  if (!userStore.isLogin) {
+    goLogin();
+    return;
+  }
+  if (qty.value > maxQty.value) {
+    toast(maxQty.value <= 0 ? "购物车已达可购上限" : `最多可购 ${maxQty.value}`);
+    return;
+  }
+  adding.value = true;
+  try {
+    if (editingCart.value) {
+      await updateCartQty(fromCartId.value, qty.value);
+      toast("已更新购物车");
+    } else {
+      await addCart(selectedSku.value.id, qty.value);
+      toast("已加入购物车");
+    }
+    await loadCartOccupancy();
+    await refreshBadge();
+  } catch (e: unknown) {
+    if (e instanceof ApiError && e.code === 401) {
+      goLogin();
+      return;
+    }
+    toast(e instanceof Error ? e.message : "加购失败");
+  } finally {
+    adding.value = false;
+  }
 }
 
 function preview(index: number) {
@@ -103,15 +276,25 @@ function previewDetail(index: number) {
 
 onLoad((query) => {
   const id = Number((query && query.id) || 0);
+  const skuId = Number((query && query.skuId) || 0);
+  const queryQty = Number((query && query.qty) || 0);
+  fromCartId.value = Number((query && query.cartId) || 0);
+  fromCartSkuId.value = skuId;
   if (!id) {
     error.value = "商品不存在";
     return;
   }
   fetchProductDetail(id)
-    .then((res) => {
+    .then(async (res) => {
       product.value = res.data;
-      const first = res.data?.skus?.[0];
+      const match = skuId ? res.data?.skus?.find((sku) => sku.id === skuId) : null;
+      const first = match || res.data?.skus?.[0];
       selectedSkuId.value = first ? first.id : null;
+      await loadCartOccupancy();
+      if (queryQty > 0) {
+        const max = maxQty.value || queryQty;
+        qty.value = Math.min(queryQty, Math.max(1, max));
+      }
     })
     .catch((e: unknown) => {
       error.value = e instanceof Error ? e.message : "加载失败";
@@ -218,6 +401,44 @@ onLoad((query) => {
   font-weight: 700;
 }
 
+.spec-chip.sold {
+  opacity: 0.45;
+}
+
+.qty-row {
+  margin-top: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qty-label {
+  font-size: 26rpx;
+  color: #374151;
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.btn {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  background: #f3f4f6;
+  text-align: center;
+  line-height: 48rpx;
+  color: #374151;
+}
+
+.num {
+  min-width: 32rpx;
+  text-align: center;
+  font-size: 28rpx;
+}
+
 .section {
   display: block;
   font-size: 30rpx;
@@ -252,6 +473,11 @@ onLoad((query) => {
   color: #fff;
   border-radius: 44rpx;
   font-size: 30rpx;
+}
+
+.buy-btn[disabled] {
+  background: #d1d5db;
+  color: #fff;
 }
 
 .loading {

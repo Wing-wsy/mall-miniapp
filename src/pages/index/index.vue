@@ -67,6 +67,17 @@
         </swiper-item>
       </swiper>
 
+      <view v-if="claimEntry" class="coupon-entry" @click="goCouponCenter">
+        <view class="coupon-entry-left">
+          <text class="coupon-entry-tag">领券</text>
+          <view class="coupon-entry-copy">
+            <text class="coupon-entry-title">{{ claimEntry.benefitText }} 待领取</text>
+            <text class="coupon-entry-sub">{{ claimCount > 1 ? `共 ${claimCount} 张可领` : claimEntry.name }}</text>
+          </view>
+        </view>
+        <text class="coupon-entry-btn">去领取</text>
+      </view>
+
       <view class="section-head">
         <text class="section-title">热卖推荐</text>
         <text class="section-more" @click="goCategory">全部</text>
@@ -112,20 +123,27 @@ import { onShow } from "@dcloudio/uni-app";
 import { fetchBannerList, type BannerVO } from "@/api/banner";
 import { fetchNavEntryList, type NavEntryVO } from "@/api/navEntry";
 import { fetchHotProducts, type ProductCardVO } from "@/api/product";
+import { fetchCouponActivities, type CouponActivityVO } from "@/api/coupon";
 import { useThemeStore } from "@/stores/theme";
+import { useUserStore } from "@/stores/user";
 
 const themeStore = useThemeStore();
+const userStore = useUserStore();
 const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
 const banners = ref<BannerVO[]>([]);
 const goods = ref<ProductCardVO[]>([]);
 const entries = ref<NavEntryVO[]>([]);
+const claimable = ref<CouponActivityVO[]>([]);
+
+const claimEntry = computed(() => claimable.value[0] || null);
+const claimCount = computed(() => claimable.value.length);
 
 const FALLBACK_ENTRIES: NavEntryVO[] = [
   { id: -1, title: "分类", iconUrl: "", linkType: "category", linkValue: "" },
   { id: -2, title: "节日", iconUrl: "", linkType: "festival", linkValue: "" },
-  { id: -3, title: "套餐", iconUrl: "", linkType: "none", linkValue: "" },
-  { id: -4, title: "优惠", iconUrl: "", linkType: "none", linkValue: "" },
+  { id: -3, title: "套餐", iconUrl: "", linkType: "page", linkValue: "/pages/coupon/activity" },
+  { id: -4, title: "优惠", iconUrl: "", linkType: "page", linkValue: "/pages/coupon/activity" },
 ];
 
 const TYPE_ICONS: Record<string, string> = {
@@ -214,6 +232,14 @@ function goPage(path: string) {
   uni.navigateTo({ url });
 }
 
+function goCouponCenter() {
+  if (!userStore.isLogin) {
+    uni.navigateTo({ url: "/pages/login/index" });
+    return;
+  }
+  uni.navigateTo({ url: "/pages/coupon/activity" });
+}
+
 function onEntry(item: NavEntryVO) {
   const value = (item.linkValue || "").trim();
   if (item.linkType === "category") {
@@ -284,6 +310,19 @@ async function loadNavEntries() {
   }
 }
 
+async function loadClaimable() {
+  if (!userStore.isLogin) {
+    claimable.value = [];
+    return;
+  }
+  try {
+    const res = await fetchCouponActivities();
+    claimable.value = (res.data || []).filter((item) => item.canClaim);
+  } catch {
+    claimable.value = [];
+  }
+}
+
 onShow(async () => {
   await themeStore.loadCurrent();
   if (themeStore.copy.navTitle) {
@@ -296,6 +335,7 @@ onShow(async () => {
   loadBanners();
   loadNavEntries();
   loadHot();
+  loadClaimable();
 });
 </script>
 
@@ -446,6 +486,67 @@ onShow(async () => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.coupon-entry {
+  margin: 0 28rpx 8rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: #fff4f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.coupon-entry-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-width: 0;
+}
+
+.coupon-entry-tag {
+  flex-shrink: 0;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: #ff5a3d;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.coupon-entry-copy {
+  min-width: 0;
+}
+
+.coupon-entry-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111827;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.coupon-entry-sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.coupon-entry-btn {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 28rpx;
+  background: #ff5a3d;
+  color: #fff;
+  font-size: 24rpx;
 }
 
 .section-head {

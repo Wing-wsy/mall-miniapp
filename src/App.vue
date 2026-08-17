@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onLaunch, onShow } from "@dcloudio/uni-app";
 import { useThemeStore } from "@/stores/theme";
+import { fetchCartCount } from "@/api/cart";
 
 const themeStore = useThemeStore();
 
@@ -9,8 +10,23 @@ onLaunch(async () => {
 });
 
 onShow(async () => {
-  // 回前台刷新皮肤；Tab 切换需在 tab 页生效
   await themeStore.loadCurrent();
+  const token = uni.getStorageSync("mall_app_token");
+  if (!token) {
+    uni.removeTabBarBadge({ index: 2 });
+    return;
+  }
+  try {
+    const res = await fetchCartCount();
+    const n = res.data?.totalQuantity || 0;
+    if (n > 0) {
+      uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
+    } else {
+      uni.removeTabBarBadge({ index: 2 });
+    }
+  } catch {
+    uni.removeTabBarBadge({ index: 2 });
+  }
 });
 </script>
 
