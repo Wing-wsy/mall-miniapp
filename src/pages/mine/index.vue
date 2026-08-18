@@ -90,8 +90,8 @@ const menus = [
   { name: "领券中心", action: "couponActivity" },
   { name: "积分商城", action: "pointsMall" },
   { name: "积分明细", action: "pointLogs" },
+  { name: "礼品兑换", action: "voucher" },
   { name: "联系客服", action: "contact" },
-  { name: "联调探测", action: "ping" },
 ];
 
 const emptyCounts = { unpaid: 0, waitShip: 0, waitRecv: 0, done: 0 };
@@ -154,10 +154,6 @@ function goOrders(status?: number) {
 }
 
 function onMenu(item: { name: string; action: string }) {
-  if (item.action === "ping") {
-    uni.navigateTo({ url: "/pages/ping/index" });
-    return;
-  }
   if (item.action === "address") {
     if (!userStore.isLogin) {
       goLogin();
@@ -200,6 +196,14 @@ function onMenu(item: { name: string; action: string }) {
       return;
     }
     uni.navigateTo({ url: "/pages/points/logs" });
+    return;
+  }
+  if (item.action === "voucher") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/voucher/redeem" });
     return;
   }
   if (item.action === "contact") {

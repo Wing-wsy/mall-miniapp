@@ -28,7 +28,7 @@
           <text class="gname">{{ item.productName }}</text>
           <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
         </view>
-        <text class="price">{{ isPoints ? `${item.points || 0} 积分` : `¥${money(item.amount)}` }}</text>
+        <text class="price">{{ isPoints ? `${item.points || 0} 积分` : isVoucher ? "兑换券" : `¥${money(item.amount)}` }}</text>
       </view>
       <view class="line">
         <text>{{ isPoints ? "兑换积分" : "商品金额" }}</text>
@@ -38,17 +38,21 @@
         <text>运费</text>
         <text>免运费</text>
       </view>
-        <view v-if="!isPoints && order.couponName" class="line">
+        <view v-if="!isPoints && !isVoucher && order.couponName" class="line">
           <text>优惠券</text>
           <text>{{ order.couponName }}</text>
         </view>
-        <view v-if="!isPoints && order.couponAmount && Number(order.couponAmount) > 0" class="line">
+        <view v-if="!isPoints && !isVoucher && order.couponAmount && Number(order.couponAmount) > 0" class="line">
           <text>优惠</text>
           <text class="off">-¥{{ money(order.couponAmount) }}</text>
         </view>
+        <view v-if="isVoucher" class="line">
+          <text>支付方式</text>
+          <text>实体兑换券</text>
+        </view>
         <view class="line strong">
-        <text>{{ isPoints ? "实付" : "应付" }}</text>
-        <text class="pay">{{ isPoints ? `${order.pointsAmount || 0} 积分` : `¥${money(order.payAmount)}` }}</text>
+        <text>{{ isPoints ? "实付" : isVoucher ? "实付" : "应付" }}</text>
+        <text class="pay">{{ isPoints ? `${order.pointsAmount || 0} 积分` : isVoucher ? "兑换券" : `¥${money(order.payAmount)}` }}</text>
       </view>
     </view>
     <view class="card meta">
@@ -78,6 +82,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 let closingExpired = false;
 
 const isPoints = computed(() => order.value?.orderType === 1);
+const isVoucher = computed(() => order.value?.orderType === 2);
 
 const payCountdown = computed(() => {
   if (!order.value || order.value.status !== 10 || !order.value.expireTime) {

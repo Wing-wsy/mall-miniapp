@@ -17,7 +17,7 @@
       </view>
 
       <view class="card">
-        <view v-for="item in items" :key="item.id || item.skuId" class="goods">
+        <view v-for="item in items" :key="item.id || item.skuId" class="goods" @click="goGoods(item)">
           <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 2) }}</view>
           <view class="info">
@@ -25,7 +25,7 @@
             <text class="spec">{{ item.specName }}</text>
             <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
             <view class="row">
-              <text class="price">{{ isPoints ? `${item.points || 0} 积分` : `¥${money(item.price)}` }}</text>
+              <text class="price">{{ isPoints ? `${item.points || 0} 积分` : isVoucher ? "兑换券" : `¥${money(item.price)}` }}</text>
               <text class="qty">x{{ item.quantity }}</text>
             </view>
           </view>
@@ -45,11 +45,15 @@
           <text>当前积分</text>
           <text>{{ memberPoints }}</text>
         </view>
-        <view v-if="!isPoints" class="line">
+        <view v-if="isVoucher" class="line">
+          <text>支付方式</text>
+          <text>实体兑换券</text>
+        </view>
+        <view v-if="!isPoints && !isVoucher" class="line">
           <text>优惠券</text>
           <text class="coupon-val">{{ couponLabel }}</text>
         </view>
-        <view v-if="!isPoints && coupons.length" class="coupon-list">
+        <view v-if="!isPoints && !isVoucher && coupons.length" class="coupon-list">
           <view
             class="coupon-card"
             :class="{ on: selectedCouponId === 0 }"
@@ -78,7 +82,7 @@
             <text v-if="selectedCouponId === c.id" class="coupon-check">✓</text>
           </view>
         </view>
-        <view v-if="!isPoints && Number(couponAmount) > 0" class="line">
+        <view v-if="!isPoints && !isVoucher && Number(couponAmount) > 0" class="line">
           <text>优惠</text>
           <text class="off">-¥{{ money(couponAmount) }}</text>
         </view>
@@ -92,10 +96,10 @@
     <view class="footer">
       <view class="total">
         <text>{{ isPoints ? "应付" : "应付" }}</text>
-        <text class="amount">{{ isPoints ? `${pointsAmount} 积分` : `¥${money(payAmount)}` }}</text>
+        <text class="amount">{{ isPoints ? `${pointsAmount} 积分` : isVoucher ? "兑换券" : `¥${money(payAmount)}` }}</text>
       </view>
       <button class="submit" :disabled="submitting || !canSubmit" @click="onSubmit">
-        {{ isPoints ? "确认兑换" : "提交订单" }}
+        {{ isPoints || isVoucher ? "确认兑换" : "提交订单" }}
       </button>
     </view>
   </view>
@@ -106,11 +110,14 @@ import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { fetchAddressDetail, type AddressVO } from "@/api/address";
 import { createOrder, createPointsOrder, previewOrder, previewPointsOrder, type OrderItemVO } from "@/api/order";
+import { previewVoucher, redeemVoucher } from "@/api/voucher";
 import { fetchCartCount } from "@/api/cart";
 import type { CouponVO } from "@/api/coupon";
 
 const cartIds = ref<number[]>([]);
 const isPoints = ref(false);
+const isVoucher = ref(false);
+const voucherCode = ref("");
 const productId = ref(0);
 const skuId = ref(0);
 const quantity = ref(1);
@@ -141,12 +148,19 @@ const couponLabel = computed(() => {
 });
 
 onLoad((query) => {
-  isPoints.value = String((query && query.mode) || "") === "points";
+  const mode = String((query && query.mode) || "");
+  isPoints.value = mode === "points";
+  isVoucher.value = mode === "voucher";
   if (isPoints.value) {
     uni.setNavigationBarTitle({ title: "确认兑换" });
     productId.value = Number((query && query.productId) || 0);
     skuId.value = Number((query && query.skuId) || 0);
     quantity.value = Math.max(1, Number((query && query.qty) || 1));
+    return;
+  }
+  if (isVoucher.value) {
+    uni.setNavigationBarTitle({ title: "确认兑换" });
+    voucherCode.value = String(uni.getStorageSync("mall_voucher_code") || (query && query.code) || "");
     return;
   }
   const raw = (query && query.cartIds) || "";
@@ -166,6 +180,11 @@ async function loadPreview(silent = false) {
       uni.showToast({ title: "请选择兑换商品", icon: "none" });
       return;
     }
+  } else if (isVoucher.value) {
+    if (!voucherCode.value) {
+      uni.showToast({ title: "请先输入验证码", icon: "none" });
+      return;
+    }
   } else if (!cartIds.value.length) {
     uni.showToast({ title: "请选择商品", icon: "none" });
     return;
@@ -182,7 +201,12 @@ async function loadPreview(silent = false) {
           quantity: quantity.value,
           addressId: stored || undefined,
         })
-      : await previewOrder(cartIds.value, selectedCouponId.value);
+      : isVoucher.value
+        ? await previewVoucher({
+            code: voucherCode.value,
+            addressId: stored || undefined,
+          })
+        : await previewOrder(cartIds.value, selectedCouponId.value);
     items.value = res.data?.items || [];
     goodsAmount.value = money(res.data?.goodsAmount);
     payAmount.value = money(res.data?.payAmount);
@@ -190,7 +214,7 @@ async function loadPreview(silent = false) {
     pointsAmount.value = Number(res.data?.pointsAmount || 0);
     memberPoints.value = Number(res.data?.memberPoints || 0);
     coupons.value = res.data?.coupons || [];
-    if (!isPoints.value) {
+    if (!isPoints.value && !isVoucher.value) {
       selectedCouponId.value = res.data?.selectedCouponId ?? 0;
     }
     previewOk.value = !!res.data?.canSubmit;
@@ -215,13 +239,21 @@ function goAddress() {
   uni.navigateTo({ url: "/pages/address/list?from=order" });
 }
 
+function goGoods(item: OrderItemVO) {
+  if (!item.productId) {
+    return;
+  }
+  const skuQuery = item.skuId ? `&skuId=${item.skuId}` : "";
+  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}` });
+}
+
 async function onSubmit() {
   if (!address.value) {
     uni.showToast({ title: "请选择收货地址", icon: "none" });
     return;
   }
   if (!previewOk.value) {
-    uni.showToast({ title: isPoints.value ? "暂无法兑换，请返回重试" : "有商品无法结算，请返回购物车", icon: "none" });
+    uni.showToast({ title: isPoints.value || isVoucher.value ? "暂无法兑换，请返回重试" : "有商品无法结算，请返回购物车", icon: "none" });
     return;
   }
   submitting.value = true;
@@ -234,14 +266,23 @@ async function onSubmit() {
           addressId: address.value.id,
           remark: remark.value || undefined,
         })
-      : await createOrder({
+      : isVoucher.value
+        ? await redeemVoucher({
+            code: voucherCode.value,
+            addressId: address.value.id,
+            remark: remark.value || undefined,
+          })
+        : await createOrder({
           cartIds: cartIds.value,
           addressId: address.value.id,
           remark: remark.value || undefined,
           couponId: selectedCouponId.value ?? 0,
         });
     uni.removeStorageSync("mall_order_address_id");
-    if (!isPoints.value) {
+    if (isVoucher.value) {
+      uni.removeStorageSync("mall_voucher_code");
+    }
+    if (!isPoints.value && !isVoucher.value) {
       try {
         const countRes = await fetchCartCount();
         const n = countRes.data?.totalQuantity || 0;

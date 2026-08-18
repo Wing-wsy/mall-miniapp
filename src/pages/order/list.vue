@@ -26,10 +26,10 @@
             <text class="name">{{ item.productName }}</text>
             <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
           </view>
-          <text class="price">{{ isPointsOrder(order) ? `${item.points || 0} 积分` : `¥${money(item.amount)}` }}</text>
+          <text class="price">{{ priceText(order, item) }}</text>
         </view>
         <view class="foot">
-          <text>{{ isPointsOrder(order) ? `合计 ${order.pointsAmount || 0} 积分` : `合计 ¥${money(order.payAmount)}` }}</text>
+          <text>{{ totalText(order) }}</text>
         </view>
       </view>
     </view>
@@ -86,6 +86,30 @@ function goDetail(id: number) {
 
 function isPointsOrder(order: OrderVO) {
   return order.orderType === 1;
+}
+
+function isVoucherOrder(order: OrderVO) {
+  return order.orderType === 2;
+}
+
+function priceText(order: OrderVO, item: OrderVO["items"][number]) {
+  if (isPointsOrder(order)) {
+    return `${item.points || 0} 积分`;
+  }
+  if (isVoucherOrder(order)) {
+    return "兑换券";
+  }
+  return `¥${money(item.amount)}`;
+}
+
+function totalText(order: OrderVO) {
+  if (isPointsOrder(order)) {
+    return `合计 ${order.pointsAmount || 0} 积分`;
+  }
+  if (isVoucherOrder(order)) {
+    return "合计 兑换券";
+  }
+  return `合计 ¥${money(order.payAmount)}`;
 }
 
 function money(v: unknown) {

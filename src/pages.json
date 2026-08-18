@@ -124,6 +124,12 @@
       }
     },
     {
+      "path": "pages/voucher/redeem",
+      "style": {
+        "navigationBarTitleText": "礼品兑换"
+      }
+    },
+    {
       "path": "pages/ping/index",
       "style": {
         "navigationBarTitleText": "联调探测"
