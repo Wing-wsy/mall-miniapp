@@ -85,3 +85,30 @@ export function fetchHotProducts(limit = 8) {
     data: { limit },
   });
 }
+
+export interface ProductPageVO {
+  list: ProductCardVO[];
+  total: number;
+  page: number;
+  size: number;
+  hasMore: boolean;
+}
+
+export function fetchProductFeed(page = 1, size = 10) {
+  return request<ProductPageVO>({
+    url: `/api/app/product/feed?page=${page}&size=${size}`,
+    method: "GET",
+  });
+}
+
+export function searchProducts(keyword: string, page = 1, size = 10) {
+  const q = [
+    `keyword=${encodeURIComponent(keyword)}`,
+    `page=${encodeURIComponent(String(page))}`,
+    `size=${encodeURIComponent(String(size))}`,
+  ].join("&");
+  return request<ProductPageVO>({
+    url: `/api/app/catalog/search?${q}`,
+    method: "GET",
+  });
+}

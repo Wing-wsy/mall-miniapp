@@ -5,6 +5,7 @@ export interface MemberVO {
   nickname: string;
   avatarUrl?: string;
   phone?: string;
+  points?: number;
 }
 
 export interface LoginResult {

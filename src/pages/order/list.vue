@@ -26,10 +26,10 @@
             <text class="name">{{ item.productName }}</text>
             <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
           </view>
-          <text class="price">¥{{ money(item.amount) }}</text>
+          <text class="price">{{ isPointsOrder(order) ? `${item.points || 0} 积分` : `¥${money(item.amount)}` }}</text>
         </view>
         <view class="foot">
-          <text>合计 ¥{{ money(order.payAmount) }}</text>
+          <text>{{ isPointsOrder(order) ? `合计 ${order.pointsAmount || 0} 积分` : `合计 ¥${money(order.payAmount)}` }}</text>
         </view>
       </view>
     </view>
@@ -82,6 +82,10 @@ async function load() {
 
 function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/order/detail?id=${id}` });
+}
+
+function isPointsOrder(order: OrderVO) {
+  return order.orderType === 1;
 }
 
 function money(v: unknown) {

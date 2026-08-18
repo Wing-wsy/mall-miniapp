@@ -14,15 +14,37 @@ export class ApiError extends Error {
   }
 }
 
+function toQuery(data: Record<string, unknown>) {
+  return Object.keys(data)
+    .filter((key) => {
+      const value = data[key];
+      return value !== undefined && value !== null && value !== "";
+    })
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(data[key]))}`)
+    .join("&");
+}
+
 export function request<T = unknown>(options: UniApp.RequestOptions) {
   const token = uni.getStorageSync("mall_app_token") || "";
+  const method = String(options.method || "GET").toUpperCase();
+  const { url: rawUrl = "", data: rawData, header: rawHeader, ...rest } = options;
+  let url = `${BASE_URL}${rawUrl}`;
+  let data: UniApp.RequestOptions["data"] | undefined = rawData;
+  if (method === "GET" && data && typeof data === "object" && !Array.isArray(data)) {
+    const qs = toQuery(data as Record<string, unknown>);
+    if (qs) {
+      url += (rawUrl.includes("?") ? "&" : "?") + qs;
+    }
+    data = undefined;
+  }
   return new Promise<ApiResult<T>>((resolve, reject) => {
-    uni.request({
-      ...options,
-      url: `${BASE_URL}${options.url}`,
+    const req: UniApp.RequestOptions = {
+      ...rest,
+      url,
+      method: options.method,
       header: {
-        "Content-Type": "application/json",
-        ...(options.header || {}),
+        ...(method === "GET" ? {} : { "Content-Type": "application/json" }),
+        ...(rawHeader || {}),
         ...(token ? { Authorization: token } : {}),
       },
       success: (res) => {
@@ -40,6 +62,10 @@ export function request<T = unknown>(options: UniApp.RequestOptions) {
       fail: (err) => {
         reject(new Error(err.errMsg || "网络异常"));
       },
-    });
+    };
+    if (data !== undefined) {
+      req.data = data;
+    }
+    uni.request(req);
   });
 }

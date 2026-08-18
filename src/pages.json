@@ -58,6 +58,12 @@
       }
     },
     {
+      "path": "pages/goods/search",
+      "style": {
+        "navigationBarTitleText": "搜索"
+      }
+    },
+    {
       "path": "pages/festival/index",
       "style": {
         "navigationBarTitleText": "节日礼品"
@@ -97,6 +103,24 @@
       "path": "pages/coupon/activity",
       "style": {
         "navigationBarTitleText": "领券中心"
+      }
+    },
+    {
+      "path": "pages/points/list",
+      "style": {
+        "navigationBarTitleText": "积分商城"
+      }
+    },
+    {
+      "path": "pages/points/detail",
+      "style": {
+        "navigationBarTitleText": "积分兑换"
+      }
+    },
+    {
+      "path": "pages/points/logs",
+      "style": {
+        "navigationBarTitleText": "积分明细"
       }
     },
     {

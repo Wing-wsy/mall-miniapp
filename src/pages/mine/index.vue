@@ -7,6 +7,7 @@
         <view class="meta">
           <text class="name">{{ displayName }}</text>
           <text class="tip">{{ displayTip }}</text>
+          <text v-if="userStore.isLogin" class="points">当前积分 {{ userStore.userInfo?.points ?? 0 }}</text>
         </view>
       </view>
     </view>
@@ -15,6 +16,10 @@
       <view class="stat" @click="goOrders(10)">
         <text class="num">{{ counts.unpaid }}</text>
         <text class="label">待付款</text>
+      </view>
+      <view class="stat" @click="goOrders(20)">
+        <text class="num">{{ counts.waitShip }}</text>
+        <text class="label">待发货</text>
       </view>
       <view class="stat" @click="goOrders(30)">
         <text class="num">{{ counts.waitRecv }}</text>
@@ -39,6 +44,27 @@
     </view>
 
     <button v-if="userStore.isLogin" class="logout-btn" @click="onLogout">退出登录</button>
+
+    <view v-if="contactVisible" class="cs-mask" @click="contactVisible = false" @touchmove.stop.prevent>
+      <view class="cs-dialog" @click.stop>
+        <text class="cs-title">联系客服</text>
+        <view v-if="contact.phone" class="cs-row">
+          <view class="cs-meta">
+            <text class="cs-label">客服电话</text>
+            <text class="cs-value">{{ contact.phone }}</text>
+          </view>
+          <text class="cs-action" @click="callPhone">拨打</text>
+        </view>
+        <view v-if="contact.email" class="cs-row">
+          <view class="cs-meta">
+            <text class="cs-label">客服邮箱</text>
+            <text class="cs-value">{{ contact.email }}</text>
+          </view>
+          <text class="cs-action" @click="copyEmail">复制</text>
+        </view>
+        <button class="cs-close" @click="contactVisible = false">关闭</button>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -47,6 +73,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { fetchOrderCounts } from "@/api/order";
+import { fetchShopContact } from "@/api/shop";
 
 const userStore = useUserStore();
 const statusBarHeight = ref(20);
@@ -61,11 +88,17 @@ const menus = [
   { name: "我的订单", action: "orders" },
   { name: "我的优惠券", action: "coupons" },
   { name: "领券中心", action: "couponActivity" },
-  { name: "联系客服", action: "toast" },
+  { name: "积分商城", action: "pointsMall" },
+  { name: "积分明细", action: "pointLogs" },
+  { name: "联系客服", action: "contact" },
   { name: "联调探测", action: "ping" },
 ];
 
-const counts = ref({ unpaid: 0, waitRecv: 0, done: 0 });
+const emptyCounts = { unpaid: 0, waitShip: 0, waitRecv: 0, done: 0 };
+const counts = ref({ ...emptyCounts });
+const contact = ref({ phone: "", email: "" });
+const contactVisible = ref(false);
+let contactLoading = false;
 const displayName = computed(() =>
   userStore.isLogin ? userStore.userInfo?.nickname || "微信用户" : "点击登录"
 );
@@ -75,6 +108,7 @@ const displayTip = computed(() =>
 const avatarText = computed(() => (userStore.isLogin ? "微" : "登"));
 
 onShow(() => {
+  loadContact();
   if (userStore.isLogin) {
     userStore.refreshProfile().catch(() => {
       userStore.clearSession();
@@ -83,15 +117,16 @@ onShow(() => {
       .then((res) => {
         counts.value = {
           unpaid: res.data?.unpaid || 0,
+          waitShip: res.data?.waitShip || 0,
           waitRecv: res.data?.waitRecv || 0,
           done: res.data?.done || 0,
         };
       })
       .catch(() => {
-        counts.value = { unpaid: 0, waitRecv: 0, done: 0 };
+        counts.value = { ...emptyCounts };
       });
   } else {
-    counts.value = { unpaid: 0, waitRecv: 0, done: 0 };
+    counts.value = { ...emptyCounts };
   }
 });
 
@@ -151,7 +186,82 @@ function onMenu(item: { name: string; action: string }) {
     uni.navigateTo({ url: "/pages/coupon/activity" });
     return;
   }
+  if (item.action === "pointsMall") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/points/list" });
+    return;
+  }
+  if (item.action === "pointLogs") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/points/logs" });
+    return;
+  }
+  if (item.action === "contact") {
+    onContact();
+    return;
+  }
   toast(item.name);
+}
+
+async function loadContact() {
+  try {
+    const res = await fetchShopContact();
+    contact.value = {
+      phone: res.data?.phone || "",
+      email: res.data?.email || "",
+    };
+  } catch {
+    // keep last known values
+  }
+}
+
+async function onContact() {
+  if (contactLoading) {
+    return;
+  }
+  let phone = contact.value.phone;
+  let email = contact.value.email;
+  if (!phone && !email) {
+    contactLoading = true;
+    try {
+      const res = await fetchShopContact();
+      phone = res.data?.phone || "";
+      email = res.data?.email || "";
+      contact.value = { phone, email };
+    } catch {
+      uni.showToast({ title: "客服信息加载失败", icon: "none" });
+      return;
+    } finally {
+      contactLoading = false;
+    }
+  }
+  if (!phone && !email) {
+    uni.showToast({ title: "暂未配置客服", icon: "none" });
+    return;
+  }
+  contactVisible.value = true;
+}
+
+function callPhone() {
+  const phone = (contact.value.phone || "").trim();
+  if (!phone) {
+    return;
+  }
+  uni.makePhoneCall({ phoneNumber: phone });
+}
+
+function copyEmail() {
+  const email = (contact.value.email || "").trim();
+  if (!email) {
+    return;
+  }
+  uni.setClipboardData({ data: email });
 }
 
 async function onLogout() {
@@ -201,6 +311,11 @@ async function onLogout() {
 .tip {
   color: rgba(255, 255, 255, 0.85);
   font-size: 24rpx;
+}
+.points {
+  color: #fff;
+  font-size: 24rpx;
+  margin-top: 4rpx;
 }
 .stats {
   margin: -28rpx 28rpx 24rpx;
@@ -257,6 +372,70 @@ async function onLogout() {
   border-radius: 42rpx;
   background: #fff;
   color: #ff5a3d;
+  font-size: 28rpx;
+}
+.cs-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.cs-dialog {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 36rpx 28rpx;
+}
+.cs-title {
+  display: block;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 28rpx;
+}
+.cs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+.cs-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.cs-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+.cs-value {
+  font-size: 28rpx;
+  color: #1f2937;
+  word-break: break-all;
+}
+.cs-action {
+  flex-shrink: 0;
+  color: #ff5a3d;
+  font-size: 26rpx;
+}
+.cs-close {
+  margin-top: 28rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 38rpx;
+  background: #f3f4f6;
+  color: #4b5563;
   font-size: 28rpx;
 }
 </style>

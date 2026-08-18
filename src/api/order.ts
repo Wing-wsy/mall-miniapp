@@ -13,6 +13,7 @@ export interface OrderItemVO {
   quantity: number;
   convertQty?: number;
   amount: number | string;
+  points?: number;
   invalidReason?: string;
 }
 
@@ -38,10 +39,12 @@ export interface OrderVO {
   orderNo: string;
   status: number;
   statusText: string;
+  orderType?: number;
   goodsAmount: number | string;
   freightAmount: number | string;
   couponAmount?: number | string;
   couponName?: string;
+  pointsAmount?: number;
   payAmount: number | string;
   payChannel?: string;
   payStatus?: number;
@@ -79,6 +82,9 @@ export interface OrderPreviewVO {
   selectedCouponId?: number | null;
   coupons?: CouponVO[];
   payAmount: number | string;
+  orderType?: number;
+  pointsAmount?: number;
+  memberPoints?: number;
   canSubmit: boolean;
 }
 
@@ -104,6 +110,28 @@ export function previewOrder(cartIds: number[], couponId?: number | null) {
 export function createOrder(data: { cartIds: number[]; addressId: number; remark?: string; couponId?: number | null }) {
   return request<OrderVO>({
     url: "/api/app/order",
+    method: "POST",
+    data,
+  });
+}
+
+export function previewPointsOrder(data: { productId: number; skuId: number; quantity: number; addressId?: number }) {
+  return request<OrderPreviewVO>({
+    url: "/api/app/order/preview-points",
+    method: "POST",
+    data,
+  });
+}
+
+export function createPointsOrder(data: {
+  productId: number;
+  skuId: number;
+  quantity: number;
+  addressId: number;
+  remark?: string;
+}) {
+  return request<OrderVO>({
+    url: "/api/app/order/points",
     method: "POST",
     data,
   });

@@ -3,13 +3,25 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }" />
     <view class="nav">
       <text class="brand" :style="{ color: themeStore.primary }">{{ themeStore.brandName }}</text>
-      <view class="search" @click="toast('搜索稍后开放')">
+      <view class="search" @click="goSearch">
         <text class="search-icon">⌕</text>
         <text class="search-placeholder">{{ themeStore.searchPlaceholder }}</text>
       </view>
     </view>
 
-    <scroll-view scroll-y class="scroll" :style="{ height: scrollHeight }">
+    <scroll-view
+      scroll-y
+      class="scroll"
+      :style="{ height: scrollHeight }"
+      lower-threshold="120"
+      @scrolltolower="onScrollToLower"
+    >
+      <view v-if="notice" class="horn">
+        <text class="horn-icon">📢</text>
+        <view class="horn-body">
+          <text class="horn-text">{{ notice }}</text>
+        </view>
+      </view>
       <!-- 皮肤主视觉优先 -->
       <view v-if="heroImageUrl" class="banner-swiper hero-wrap" @click="goFestival">
         <image class="banner-img" :src="heroImageUrl" mode="aspectFill" />
@@ -87,7 +99,7 @@
       <view v-else class="goods-grid">
         <view
           v-for="item in goods"
-          :key="item.id"
+          :key="'hot-' + item.id"
           class="goods-card"
           @click="goDetail(item.id)"
         >
@@ -112,6 +124,45 @@
           </view>
         </view>
       </view>
+
+      <view class="section-head">
+        <text class="section-title">全部商品</text>
+      </view>
+      <view v-if="catalogLoading && !catalog.length" class="hot-empty">加载中...</view>
+      <view v-else-if="!catalog.length" class="hot-empty">暂无商品</view>
+      <view v-else class="goods-grid">
+        <view
+          v-for="item in catalog"
+          :key="'all-' + item.id"
+          class="goods-card"
+          @click="goDetail(item.id)"
+        >
+          <view class="goods-cover" :style="{ background: themeStore.tokens.primarySoft }">
+            <image
+              v-if="item.coverUrl"
+              class="goods-cover-img"
+              :src="item.coverUrl"
+              mode="aspectFill"
+            />
+            <view v-else class="cover-fallback">
+              <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
+            </view>
+          </view>
+          <view class="goods-body">
+            <text class="goods-name">{{ item.name }}</text>
+            <view class="price-row">
+              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ item.price }}</text>
+              <text v-if="item.multiSpec" class="from">起</text>
+              <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view v-if="catalog.length" class="feed-status">
+        <text v-if="catalogLoadingMore">加载中...</text>
+        <text v-else-if="catalogHasMore">上拉加载更多</text>
+        <text v-else>没有更多了</text>
+      </view>
       <view class="safe-bottom" />
     </scroll-view>
   </view>
@@ -122,8 +173,9 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchBannerList, type BannerVO } from "@/api/banner";
 import { fetchNavEntryList, type NavEntryVO } from "@/api/navEntry";
-import { fetchHotProducts, type ProductCardVO } from "@/api/product";
+import { fetchHotProducts, fetchProductFeed, type ProductCardVO } from "@/api/product";
 import { fetchCouponActivities, type CouponActivityVO } from "@/api/coupon";
+import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
 import { useUserStore } from "@/stores/user";
 
@@ -133,8 +185,16 @@ const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
 const banners = ref<BannerVO[]>([]);
 const goods = ref<ProductCardVO[]>([]);
+const catalog = ref<ProductCardVO[]>([]);
+const catalogLoading = ref(false);
+const catalogLoadingMore = ref(false);
+const catalogHasMore = ref(true);
+const catalogPage = ref(0);
+const CATALOG_PAGE_SIZE = 10;
+let catalogSeq = 0;
 const entries = ref<NavEntryVO[]>([]);
 const claimable = ref<CouponActivityVO[]>([]);
+const notice = ref("");
 
 const claimEntry = computed(() => claimable.value[0] || null);
 const claimCount = computed(() => claimable.value.length);
@@ -207,6 +267,10 @@ function goCategory() {
 
 function goFestival() {
   uni.navigateTo({ url: "/pages/festival/index" });
+}
+
+function goSearch() {
+  uni.navigateTo({ url: "/pages/goods/search" });
 }
 
 function goDetail(id: number) {
@@ -301,6 +365,49 @@ async function loadHot() {
   }
 }
 
+async function loadCatalog(reset: boolean) {
+  if (reset) {
+    catalogSeq += 1;
+    catalogPage.value = 0;
+    catalogHasMore.value = true;
+    catalogLoading.value = true;
+    catalogLoadingMore.value = false;
+  } else if (catalogLoading.value || catalogLoadingMore.value || !catalogHasMore.value) {
+    return;
+  } else {
+    catalogLoadingMore.value = true;
+  }
+  const seq = catalogSeq;
+  const page = catalogPage.value + 1;
+  try {
+    const res = await fetchProductFeed(page, CATALOG_PAGE_SIZE);
+    if (seq !== catalogSeq) {
+      return;
+    }
+    const chunk = res.data?.list || [];
+    catalog.value = reset ? chunk : catalog.value.concat(chunk);
+    catalogPage.value = page;
+    catalogHasMore.value = !!res.data?.hasMore;
+  } catch {
+    if (seq !== catalogSeq) {
+      return;
+    }
+    if (reset) {
+      catalog.value = [];
+      catalogHasMore.value = false;
+    }
+  } finally {
+    if (seq === catalogSeq) {
+      catalogLoading.value = false;
+      catalogLoadingMore.value = false;
+    }
+  }
+}
+
+function onScrollToLower() {
+  loadCatalog(false);
+}
+
 async function loadNavEntries() {
   try {
     const res = await fetchNavEntryList();
@@ -323,6 +430,15 @@ async function loadClaimable() {
   }
 }
 
+async function loadNotice() {
+  try {
+    const res = await fetchShopContact();
+    notice.value = (res.data?.notice || "").trim();
+  } catch {
+    notice.value = "";
+  }
+}
+
 onShow(async () => {
   await themeStore.loadCurrent();
   if (themeStore.copy.navTitle) {
@@ -335,7 +451,9 @@ onShow(async () => {
   loadBanners();
   loadNavEntries();
   loadHot();
+  loadCatalog(true);
   loadClaimable();
+  loadNotice();
 });
 </script>
 
@@ -377,6 +495,47 @@ onShow(async () => {
 .search-placeholder {
   color: #9ca3af;
   font-size: 26rpx;
+}
+
+.horn {
+  margin: 16rpx 28rpx 0;
+  height: 64rpx;
+  padding: 0 20rpx;
+  border-radius: 32rpx;
+  background: #fff4f0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  overflow: hidden;
+}
+
+.horn-icon {
+  flex-shrink: 0;
+  font-size: 28rpx;
+}
+
+.horn-body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.horn-text {
+  display: inline-block;
+  font-size: 24rpx;
+  color: #c2410c;
+  white-space: nowrap;
+  padding-left: 100%;
+  animation: horn-marquee 14s linear infinite;
+}
+
+@keyframes horn-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 .scroll {
@@ -653,6 +812,13 @@ onShow(async () => {
 
 .from {
   font-size: 22rpx;
+}
+
+.feed-status {
+  padding: 12rpx 0 8rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 
 .safe-bottom {

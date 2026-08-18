@@ -28,27 +28,27 @@
           <text class="gname">{{ item.productName }}</text>
           <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
         </view>
-        <text class="price">¥{{ money(item.amount) }}</text>
+        <text class="price">{{ isPoints ? `${item.points || 0} 积分` : `¥${money(item.amount)}` }}</text>
       </view>
       <view class="line">
-        <text>商品金额</text>
-        <text>¥{{ money(order.goodsAmount) }}</text>
+        <text>{{ isPoints ? "兑换积分" : "商品金额" }}</text>
+        <text>{{ isPoints ? `${order.pointsAmount || 0} 积分` : `¥${money(order.goodsAmount)}` }}</text>
       </view>
       <view class="line">
         <text>运费</text>
         <text>免运费</text>
       </view>
-        <view v-if="order.couponName" class="line">
+        <view v-if="!isPoints && order.couponName" class="line">
           <text>优惠券</text>
           <text>{{ order.couponName }}</text>
         </view>
-        <view v-if="order.couponAmount && Number(order.couponAmount) > 0" class="line">
+        <view v-if="!isPoints && order.couponAmount && Number(order.couponAmount) > 0" class="line">
           <text>优惠</text>
           <text class="off">-¥{{ money(order.couponAmount) }}</text>
         </view>
         <view class="line strong">
-        <text>应付</text>
-        <text class="pay">¥{{ money(order.payAmount) }}</text>
+        <text>{{ isPoints ? "实付" : "应付" }}</text>
+        <text class="pay">{{ isPoints ? `${order.pointsAmount || 0} 积分` : `¥${money(order.payAmount)}` }}</text>
       </view>
     </view>
     <view class="card meta">
@@ -76,6 +76,8 @@ const orderId = ref(0);
 const remainMs = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
 let closingExpired = false;
+
+const isPoints = computed(() => order.value?.orderType === 1);
 
 const payCountdown = computed(() => {
   if (!order.value || order.value.status !== 10 || !order.value.expireTime) {
@@ -277,10 +279,15 @@ function formatTime(t?: string) {
 }
 
 function goExpress() {
-  if (!order.value) {
+  if (!order.value?.id) {
     return;
   }
-  uni.navigateTo({ url: `/pages/order/express?id=${order.value.id}` });
+  uni.navigateTo({
+    url: `/pages/order/express?id=${order.value.id}`,
+    fail: (err) => {
+      uni.showToast({ title: err?.errMsg || "打开物流失败", icon: "none" });
+    },
+  });
 }
 </script>
 
