@@ -13,9 +13,9 @@
         <view class="body">
           <text class="name">{{ item.name }}</text>
           <view class="price-row">
-            <text class="price">¥{{ item.price }}</text>
+            <text class="price">¥{{ salePrice(item) }}</text>
             <text v-if="item.multiSpec" class="from">起</text>
-            <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
+            <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
           </view>
         </view>
       </view>
@@ -31,6 +31,7 @@ import {
   fetchProductListByFestival,
   type ProductCardVO,
 } from "@/api/product";
+import { linePrice, salePrice } from "@/utils/price";
 
 const list = ref<ProductCardVO[]>([]);
 const loading = ref(false);

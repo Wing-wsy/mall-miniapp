@@ -117,9 +117,9 @@
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ item.price }}</text>
+              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
               <text v-if="item.multiSpec" class="from">起</text>
-              <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
+              <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
             </view>
           </view>
         </view>
@@ -151,9 +151,9 @@
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ item.price }}</text>
+              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
               <text v-if="item.multiSpec" class="from">起</text>
-              <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
+              <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
             </view>
           </view>
         </view>
@@ -178,6 +178,7 @@ import { fetchCouponActivities, type CouponActivityVO } from "@/api/coupon";
 import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
 import { useUserStore } from "@/stores/user";
+import { linePrice, salePrice } from "@/utils/price";
 
 const themeStore = useThemeStore();
 const userStore = useUserStore();

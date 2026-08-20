@@ -9,6 +9,7 @@ export interface CartItemVO {
   specName?: string;
   price: number | string;
   originPrice?: number | string;
+  memberPrice?: number | string | null;
   quantity: number;
   convertQty?: number;
   sellableQty?: number;

@@ -44,6 +44,9 @@ export interface OrderVO {
   freightAmount: number | string;
   couponAmount?: number | string;
   couponName?: string;
+  memberLevelName?: string;
+  memberDiscount?: number | string;
+  memberDiscountAmount?: number | string;
   pointsAmount?: number;
   payAmount: number | string;
   payChannel?: string;
@@ -77,11 +80,18 @@ export interface OrderPreviewVO {
   items: OrderItemVO[];
   goodsAmount: number | string;
   freightAmount: number | string;
+  freightFree?: boolean;
+  freightHint?: string;
   couponAmount?: number | string;
   couponName?: string;
   selectedCouponId?: number | null;
   coupons?: CouponVO[];
   payAmount: number | string;
+  memberLevelName?: string;
+  memberDiscount?: number | string;
+  memberDiscountAmount?: number | string;
+  couponStackMode?: string;
+  memberDiscountApplied?: boolean;
   orderType?: number;
   pointsAmount?: number;
   memberPoints?: number;
@@ -95,10 +105,13 @@ export interface OrderCountVO {
   done: number;
 }
 
-export function previewOrder(cartIds: number[], couponId?: number | null) {
-  const data: { cartIds: number[]; couponId?: number } = { cartIds };
+export function previewOrder(cartIds: number[], couponId?: number | null, addressId?: number | null) {
+  const data: { cartIds: number[]; couponId?: number; addressId?: number } = { cartIds };
   if (couponId != null) {
     data.couponId = couponId;
+  }
+  if (addressId) {
+    data.addressId = addressId;
   }
   return request<OrderPreviewVO>({
     url: "/api/app/order/preview",

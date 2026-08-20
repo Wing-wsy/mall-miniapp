@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { fetchProfile, loginByCode, logoutApi, type MemberVO } from "@/api/auth";
+import { fetchProfile, loginByCode, logoutApi, bindPhone, type MemberVO } from "@/api/auth";
 
 export const useUserStore = defineStore("user", () => {
   const token = ref(uni.getStorageSync("mall_app_token") || "");
@@ -64,6 +64,12 @@ export const useUserStore = defineStore("user", () => {
     return data;
   }
 
+  async function bindWxPhone(payload: { code?: string; phone?: string }) {
+    const { data } = await bindPhone(payload);
+    setUserInfo(data);
+    return data;
+  }
+
   async function refreshProfile() {
     if (!token.value) return null;
     const { data } = await fetchProfile();
@@ -91,6 +97,7 @@ export const useUserStore = defineStore("user", () => {
     clearSession,
     loginWithWxCode,
     loginWithMockCode,
+    bindWxPhone,
     refreshProfile,
     logout,
   };

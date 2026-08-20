@@ -14,6 +14,7 @@ export interface CouponVO {
   createTime?: string;
   usable?: boolean;
   reason?: string;
+  tip?: string;
   couponAmount?: number | string;
 }
 

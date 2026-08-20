@@ -1,11 +1,20 @@
 import { request } from "@/utils/request";
 
+export interface MemberLevelVO {
+  id: number;
+  name: string;
+  iconUrl?: string;
+  discount?: number | string;
+  couponStackMode?: "STACK" | "MUTEX";
+}
+
 export interface MemberVO {
   memberNo?: string;
   nickname: string;
   avatarUrl?: string;
   phone?: string;
   points?: number;
+  level?: MemberLevelVO | null;
 }
 
 export interface LoginResult {
@@ -18,6 +27,14 @@ export function loginByCode(code: string) {
     url: "/api/app/auth/login",
     method: "POST",
     data: { code },
+  });
+}
+
+export function bindPhone(data: { code?: string; phone?: string }) {
+  return request<MemberVO>({
+    url: "/api/app/auth/bind-phone",
+    method: "POST",
+    data,
   });
 }
 

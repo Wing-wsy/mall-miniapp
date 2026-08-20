@@ -39,7 +39,7 @@
         </view>
         <view class="line">
           <text>运费</text>
-          <text>免运费</text>
+          <text>{{ freightLabel }}</text>
         </view>
         <view v-if="isPoints" class="line">
           <text>当前积分</text>
@@ -48,6 +48,10 @@
         <view v-if="isVoucher" class="line">
           <text>支付方式</text>
           <text>实体兑换券</text>
+        </view>
+        <view v-if="!isPoints && !isVoucher && Number(memberDiscountAmount) > 0" class="line">
+          <text>会员折扣{{ memberLevelName ? `（${memberLevelName}）` : "" }}</text>
+          <text class="off">-¥{{ money(memberDiscountAmount) }}</text>
         </view>
         <view v-if="!isPoints && !isVoucher" class="line">
           <text>优惠券</text>
@@ -62,7 +66,7 @@
             <view class="coupon-bar none" />
             <view class="coupon-body">
               <text class="coupon-name">不使用优惠券</text>
-              <text class="coupon-desc">按原价结算</text>
+              <text class="coupon-desc">{{ memberDiscountApplied ? "享受会员折扣" : "按原价结算" }}</text>
             </view>
             <text v-if="selectedCouponId === 0" class="coupon-check">✓</text>
           </view>
@@ -77,7 +81,7 @@
             <view class="coupon-body">
               <text class="coupon-benefit">{{ c.benefitText }}</text>
               <text class="coupon-name">{{ c.name }}</text>
-              <text class="coupon-desc">{{ c.usable ? `可减 ¥${money(c.couponAmount)}` : c.reason || "不可用" }}</text>
+              <text class="coupon-desc">{{ c.usable ? `可减 ¥${money(c.couponAmount)}${c.tip ? " · " + c.tip : ""}` : c.reason || "不可用" }}</text>
             </view>
             <text v-if="selectedCouponId === c.id" class="coupon-check">✓</text>
           </view>
@@ -126,8 +130,14 @@ const submitting = ref(false);
 const address = ref<AddressVO | null>(null);
 const items = ref<OrderItemVO[]>([]);
 const goodsAmount = ref("0.00");
+const freightAmount = ref("0.00");
+const freightFree = ref(false);
+const freightHint = ref("");
 const payAmount = ref("0.00");
 const couponAmount = ref("0.00");
+const memberDiscountAmount = ref("0.00");
+const memberLevelName = ref("");
+const memberDiscountApplied = ref(false);
 const pointsAmount = ref(0);
 const memberPoints = ref(0);
 const selectedCouponId = ref<number | null>(null);
@@ -136,6 +146,18 @@ const remark = ref("");
 const previewOk = ref(false);
 
 const canSubmit = computed(() => previewOk.value && !!address.value && items.value.length > 0);
+const freightLabel = computed(() => {
+  if (isPoints.value || isVoucher.value) {
+    return "免运费";
+  }
+  if (!address.value) {
+    return freightHint.value || "请选择收货地址";
+  }
+  if (Number(freightAmount.value) === 0) {
+    return freightFree.value ? "包邮" : "免运费";
+  }
+  return `¥${money(freightAmount.value)}`;
+});
 const couponLabel = computed(() => {
   if (selectedCouponId.value == null || selectedCouponId.value === 0) {
     if (selectedCouponId.value === 0) {
@@ -206,11 +228,17 @@ async function loadPreview(silent = false) {
             code: voucherCode.value,
             addressId: stored || undefined,
           })
-        : await previewOrder(cartIds.value, selectedCouponId.value);
+        : await previewOrder(cartIds.value, selectedCouponId.value, stored || undefined);
     items.value = res.data?.items || [];
     goodsAmount.value = money(res.data?.goodsAmount);
+    freightAmount.value = money(res.data?.freightAmount);
+    freightFree.value = !!res.data?.freightFree;
+    freightHint.value = res.data?.freightHint || "";
     payAmount.value = money(res.data?.payAmount);
     couponAmount.value = money(res.data?.couponAmount);
+    memberDiscountAmount.value = money(res.data?.memberDiscountAmount);
+    memberLevelName.value = res.data?.memberLevelName || "";
+    memberDiscountApplied.value = !!res.data?.memberDiscountApplied;
     pointsAmount.value = Number(res.data?.pointsAmount || 0);
     memberPoints.value = Number(res.data?.memberPoints || 0);
     coupons.value = res.data?.coupons || [];

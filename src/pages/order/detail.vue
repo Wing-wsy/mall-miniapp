@@ -36,8 +36,12 @@
       </view>
       <view class="line">
         <text>运费</text>
-        <text>免运费</text>
+        <text>{{ freightText(order) }}</text>
       </view>
+        <view v-if="!isPoints && !isVoucher && order.memberDiscountAmount && Number(order.memberDiscountAmount) > 0" class="line">
+          <text>会员折扣{{ order.memberLevelName ? `（${order.memberLevelName}）` : "" }}</text>
+          <text class="off">-¥{{ money(order.memberDiscountAmount) }}</text>
+        </view>
         <view v-if="!isPoints && !isVoucher && order.couponName" class="line">
           <text>优惠券</text>
           <text>{{ order.couponName }}</text>
@@ -270,6 +274,13 @@ function onConfirm() {
       }
     },
   });
+}
+
+function freightText(row: OrderVO) {
+  if (row.orderType === 1 || row.orderType === 2 || Number(row.freightAmount) === 0) {
+    return "免运费";
+  }
+  return `¥${money(row.freightAmount)}`;
 }
 
 function money(v: unknown) {

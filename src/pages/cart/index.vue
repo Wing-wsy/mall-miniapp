@@ -34,7 +34,7 @@
           <text class="spec">{{ item.specName }}</text>
           <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
           <view class="bottom">
-            <text class="price">¥{{ item.price }}</text>
+            <text class="price">¥{{ salePrice(item) }}</text>
             <view class="qty" @click.stop>
               <text class="btn" @click="changeQty(item, -1)">−</text>
               <text class="num">{{ item.quantity }}</text>
@@ -82,6 +82,7 @@ import {
   updateCartQty,
   type CartItemVO,
 } from "@/api/cart";
+import { salePrice } from "@/utils/price";
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 
@@ -103,7 +104,7 @@ const allSelected = computed(
 
 const total = computed(() => {
   const amount = selectedItems.value.reduce(
-    (sum, item) => sum + Number(item.price) * item.quantity,
+    (sum, item) => sum + Number(salePrice(item)) * item.quantity,
     0,
   );
   return amount.toFixed(2);

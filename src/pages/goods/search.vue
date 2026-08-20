@@ -37,9 +37,9 @@
           <view class="body">
             <text class="name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price">¥{{ item.price }}</text>
+              <text class="price">¥{{ salePrice(item) }}</text>
               <text v-if="item.multiSpec" class="from">起</text>
-              <text v-if="item.originPrice" class="origin">¥{{ item.originPrice }}</text>
+              <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
             </view>
           </view>
         </view>
@@ -57,6 +57,7 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { searchProducts, type ProductCardVO } from "@/api/product";
+import { linePrice, salePrice } from "@/utils/price";
 import { useThemeStore } from "@/stores/theme";
 
 const themeStore = useThemeStore();

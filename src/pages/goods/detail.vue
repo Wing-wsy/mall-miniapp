@@ -17,7 +17,7 @@
     <view class="panel">
       <view class="price-row">
         <text class="price">¥{{ displayPrice }}</text>
-        <text v-if="displayOriginPrice" class="origin">¥{{ displayOriginPrice }}</text>
+        <text v-if="displayLinePrice" class="origin">¥{{ displayLinePrice }}</text>
       </view>
       <text class="name">{{ product.name }}</text>
       <text v-if="product.subtitle" class="subtitle">{{ product.subtitle }}</text>
@@ -81,6 +81,7 @@ import { fetchProductDetail, type ProductDetailVO, type ProductSkuVO } from "@/a
 import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
+import { linePrice, salePrice } from "@/utils/price";
 
 const userStore = useUserStore();
 const product = ref<ProductDetailVO | null>(null);
@@ -106,9 +107,9 @@ const skus = computed<ProductSkuVO[]>(() => product.value?.skus || []);
 
 const selectedSku = computed(() => skus.value.find((sku) => sku.id === selectedSkuId.value) || skus.value[0]);
 
-const displayPrice = computed(() => selectedSku.value?.price ?? product.value?.price);
+const displayPrice = computed(() => salePrice(selectedSku.value || product.value));
 
-const displayOriginPrice = computed(() => selectedSku.value?.originPrice ?? product.value?.originPrice);
+const displayLinePrice = computed(() => linePrice(selectedSku.value || product.value));
 
 const existingQty = computed(() => {
   const skuId = selectedSku.value?.id;
