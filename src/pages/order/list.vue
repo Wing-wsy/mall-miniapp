@@ -19,6 +19,9 @@
           <text class="no">{{ order.orderNo }}</text>
           <text class="st">{{ order.statusText }}</text>
         </view>
+        <text v-if="order.afterSaleStatusText && [10, 20, 21, 30].includes(Number(order.afterSaleStatus))" class="as">
+          售后 {{ order.afterSaleStatusText }}
+        </text>
         <view v-for="item in order.items" :key="item.id" class="goods">
           <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
@@ -162,6 +165,12 @@ function money(v: unknown) {
 }
 .st {
   color: #ff5a3d;
+}
+.as {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #b45309;
 }
 .goods {
   display: flex;

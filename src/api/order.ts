@@ -73,6 +73,11 @@ export interface OrderVO {
   canPay?: boolean;
   canCancel?: boolean;
   canConfirm?: boolean;
+  canAfterSale?: boolean;
+  afterSaleId?: number;
+  afterSaleStatus?: number;
+  afterSaleStatusText?: string;
+  allowedAfterSaleTypes?: number[];
 }
 
 export interface OrderPreviewVO {
@@ -103,6 +108,7 @@ export interface OrderCountVO {
   waitShip: number;
   waitRecv: number;
   done: number;
+  afterSale?: number;
 }
 
 export function previewOrder(cartIds: number[], couponId?: number | null, addressId?: number | null) {

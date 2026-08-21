@@ -64,8 +64,10 @@
       <text v-if="order.buyerRemark">备注 {{ order.buyerRemark }}</text>
       <text v-if="order.cancelReason">取消原因 {{ order.cancelReason }}</text>
     </view>
-    <view v-if="order.canPay || order.canCancel || order.canConfirm" class="footer">
+    <view v-if="order.canPay || order.canCancel || order.canConfirm || order.canAfterSale || showAfterSaleProgress" class="footer">
       <button v-if="order.canCancel" class="ghost" @click="onCancel">取消订单</button>
+      <button v-if="showAfterSaleProgress" class="ghost" @click="goAfterSale">售后进度</button>
+      <button v-else-if="order.canAfterSale" class="ghost" @click="goApply">申请售后</button>
       <button v-if="order.canConfirm" class="primary" @click="onConfirm">确认收货</button>
       <button v-if="order.canPay" class="primary" @click="onPay">立即支付</button>
     </view>
@@ -121,6 +123,11 @@ const showExpress = computed(() => {
     return false;
   }
   return order.value.status === 30 || order.value.status === 40;
+});
+
+const showAfterSaleProgress = computed(() => {
+  const s = order.value?.afterSaleStatus;
+  return !!order.value?.afterSaleId && [10, 20, 21, 30].includes(Number(s));
 });
 
 onLoad((query) => {
@@ -304,6 +311,20 @@ function goExpress() {
       uni.showToast({ title: err?.errMsg || "打开物流失败", icon: "none" });
     },
   });
+}
+
+function goApply() {
+  if (!order.value?.id) {
+    return;
+  }
+  uni.navigateTo({ url: `/pages/aftersale/apply?id=${order.value.id}` });
+}
+
+function goAfterSale() {
+  if (!order.value?.afterSaleId) {
+    return;
+  }
+  uni.navigateTo({ url: `/pages/aftersale/detail?id=${order.value.afterSaleId}` });
 }
 </script>
 

@@ -91,6 +91,7 @@ try {
 const menus = [
   { name: "收货地址", action: "address" },
   { name: "我的订单", action: "orders" },
+  { name: "退款/售后", action: "aftersale" },
   { name: "我的优惠券", action: "coupons" },
   { name: "领券中心", action: "couponActivity" },
   { name: "积分商城", action: "pointsMall" },
@@ -172,6 +173,14 @@ function onMenu(item: { name: string; action: string }) {
   }
   if (item.action === "orders") {
     goOrders();
+    return;
+  }
+  if (item.action === "aftersale") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/aftersale/list" });
     return;
   }
   if (item.action === "coupons") {

@@ -94,6 +94,24 @@
       }
     },
     {
+      "path": "pages/aftersale/list",
+      "style": {
+        "navigationBarTitleText": "退款/售后"
+      }
+    },
+    {
+      "path": "pages/aftersale/apply",
+      "style": {
+        "navigationBarTitleText": "申请售后"
+      }
+    },
+    {
+      "path": "pages/aftersale/detail",
+      "style": {
+        "navigationBarTitleText": "售后详情"
+      }
+    },
+    {
       "path": "pages/coupon/list",
       "style": {
         "navigationBarTitleText": "我的优惠券"
