@@ -70,7 +70,7 @@
                 <image
                   class="entry-icon-img"
                   :src="entryIcon(item)"
-                  :mode="item.iconUrl ? 'aspectFill' : 'aspectFit'"
+                  mode="aspectFit"
                 />
               </view>
               <text class="entry-name">{{ item.title }}</text>
@@ -592,7 +592,7 @@ onShow(async () => {
 
 .entry-swiper {
   margin: 28rpx;
-  height: 360rpx;
+  height: 400rpx;
   background: #fff;
   border-radius: 24rpx;
 }
@@ -633,9 +633,8 @@ onShow(async () => {
 }
 
 .entry-icon.is-custom .entry-icon-img {
-  width: 140%;
-  height: 140%;
-  flex-shrink: 0;
+  width: 88rpx;
+  height: 88rpx;
 }
 
 .entry-name {

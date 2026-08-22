@@ -8,9 +8,8 @@
           <view class="name-row">
             <text class="name">{{ displayName }}</text>
             <text v-if="levelName" class="level-badge">{{ levelName }}</text>
-            <image v-if="levelIcon" class="level-icon" :src="levelIcon" mode="aspectFit" />
           </view>
-          <text class="tip">{{ displayTip }}</text>
+          <text v-if="!userStore.isLogin" class="tip">登录后同步订单与专属价格</text>
           <text v-if="userStore.isLogin" class="points">当前积分 {{ userStore.userInfo?.points ?? 0 }}</text>
           <text v-if="needPhone" class="bind" @click.stop="goLogin">授权手机号，解锁会员价</text>
         </view>
@@ -108,10 +107,6 @@ let contactLoading = false;
 const displayName = computed(() =>
   userStore.isLogin ? userStore.userInfo?.nickname || "微信用户" : "点击登录"
 );
-const displayTip = computed(() =>
-  userStore.isLogin ? "欢迎回来，开启今日选购" : "登录后同步订单与专属价格"
-);
-const levelIcon = computed(() => userStore.userInfo?.level?.iconUrl || "");
 const levelName = computed(() => userStore.userInfo?.level?.name || "");
 const needPhone = computed(() => userStore.isLogin && !userStore.userInfo?.phone);
 const avatarText = computed(() => (userStore.isLogin ? "微" : "登"));
@@ -318,13 +313,6 @@ async function onLogout() {
   justify-content: center;
   font-size: 40rpx;
   font-weight: 700;
-  flex-shrink: 0;
-}
-.level-icon {
-  width: 56rpx;
-  height: 56rpx;
-  background-color: transparent;
-  display: block;
   flex-shrink: 0;
 }
 .level-badge {
