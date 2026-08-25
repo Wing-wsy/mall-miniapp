@@ -9,7 +9,7 @@
           :key="item.id"
           class="side-item"
           :class="{ active: index === active }"
-          @click="active = index"
+          @click="selectRoot(index)"
         >
           <view v-if="index === active" class="active-bar" />
           <text>{{ item.name }}</text>
@@ -17,13 +17,28 @@
       </scroll-view>
 
       <scroll-view scroll-y class="main">
-        <view class="main-title">{{ current?.name }}</view>
-        <view class="list">
+        <view class="main-title">{{ viewing?.name }}</view>
+        <view v-if="trail.length" class="crumb">
+          <text class="crumb-link" @click="trail = []">{{ current?.name }}</text>
+          <template v-for="(node, i) in trail" :key="node.id">
+            <text class="crumb-sep">/</text>
+            <text class="crumb-link" @click="trail = trail.slice(0, i + 1)">{{ node.name }}</text>
+          </template>
+        </view>
+        <view v-if="viewing && isLeaf(viewing)" class="list">
+          <view class="list-item" @click="goList(viewing)">
+            <view class="thumb">
+              <text>{{ viewing.name.slice(0, 1) }}</text>
+            </view>
+            <text class="name">查看商品</text>
+          </view>
+        </view>
+        <view v-else class="list">
           <view
-            v-for="item in current?.children || []"
+            v-for="item in viewing?.children || []"
             :key="item.id"
             class="list-item"
-            @click="goList(item)"
+            @click="onTapChild(item)"
           >
             <view class="thumb">
               <text>{{ item.name.slice(0, 1) }}</text>
@@ -31,7 +46,6 @@
             <text class="name">{{ item.name }}</text>
           </view>
         </view>
-        <view v-if="!(current?.children || []).length" class="empty-inline">暂无二级分类</view>
       </scroll-view>
     </template>
   </view>
@@ -44,9 +58,20 @@ import { fetchProductCategoryTree, type CategoryNodeVO } from "@/api/category";
 
 const categories = ref<CategoryNodeVO[]>([]);
 const active = ref(0);
+const trail = ref<CategoryNodeVO[]>([]);
 const loading = ref(false);
 
 const current = computed(() => categories.value[active.value]);
+const viewing = computed(() => {
+  if (!current.value) return undefined;
+  return trail.value.length ? trail.value[trail.value.length - 1] : current.value;
+});
+
+function isLeaf(node?: CategoryNodeVO) {
+  if (!node) return false;
+  if (node.leaf === true) return true;
+  return !(node.children && node.children.length);
+}
 
 async function load() {
   loading.value = true;
@@ -56,11 +81,29 @@ async function load() {
     if (active.value >= categories.value.length) {
       active.value = 0;
     }
+    trail.value = [];
   } catch (e: any) {
     uni.showToast({ title: e?.message || "加载失败", icon: "none" });
   } finally {
     loading.value = false;
   }
+}
+
+function selectRoot(index: number) {
+  active.value = index;
+  trail.value = [];
+  const item = categories.value[index];
+  if (isLeaf(item)) {
+    goList(item);
+  }
+}
+
+function onTapChild(item: CategoryNodeVO) {
+  if (isLeaf(item)) {
+    goList(item);
+    return;
+  }
+  trail.value = [...trail.value, item];
 }
 
 function goList(item: CategoryNodeVO) {
@@ -107,8 +150,8 @@ onShow(load);
   top: 30rpx;
   width: 6rpx;
   height: 40rpx;
-  background: #ff5a3d;
   border-radius: 0 6rpx 6rpx 0;
+  background: #ff5a3d;
 }
 
 .main {
@@ -123,7 +166,25 @@ onShow(load);
   font-size: 30rpx;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.crumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 20rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.crumb-link {
+  color: #ff5a3d;
+}
+
+.crumb-sep {
+  margin: 0 8rpx;
+  color: #d1d5db;
 }
 
 .list {
@@ -158,8 +219,7 @@ onShow(load);
   color: #374151;
 }
 
-.empty,
-.empty-inline {
+.empty {
   padding: 80rpx 40rpx;
   text-align: center;
   color: #9ca3af;

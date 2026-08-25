@@ -117,6 +117,7 @@ import { createOrder, createPointsOrder, previewOrder, previewPointsOrder, type 
 import { previewVoucher, redeemVoucher } from "@/api/voucher";
 import { fetchCartCount } from "@/api/cart";
 import type { CouponVO } from "@/api/coupon";
+import { prefetchCoverUrls } from "@/utils/media";
 
 const cartIds = ref<number[]>([]);
 const isPoints = ref(false);
@@ -145,7 +146,7 @@ const coupons = ref<CouponVO[]>([]);
 const remark = ref("");
 const previewOk = ref(false);
 
-const canSubmit = computed(() => previewOk.value && !!address.value && items.value.length > 0);
+const canSubmit = computed(() => items.value.length > 0);
 const freightLabel = computed(() => {
   if (isPoints.value || isVoucher.value) {
     return "免运费";
@@ -230,6 +231,7 @@ async function loadPreview(silent = false) {
           })
         : await previewOrder(cartIds.value, selectedCouponId.value, stored || undefined);
     items.value = res.data?.items || [];
+    await prefetchCoverUrls(items.value);
     goodsAmount.value = money(res.data?.goodsAmount);
     freightAmount.value = money(res.data?.freightAmount);
     freightFree.value = !!res.data?.freightFree;
@@ -277,7 +279,16 @@ function goGoods(item: OrderItemVO) {
 
 async function onSubmit() {
   if (!address.value) {
-    uni.showToast({ title: "请选择收货地址", icon: "none" });
+    uni.showModal({
+      title: "请填写收货地址",
+      content: "提交订单前需要先填写收货地址",
+      confirmText: "去填写",
+      success: (res) => {
+        if (res.confirm) {
+          goAddress();
+        }
+      },
+    });
     return;
   }
   if (!previewOk.value) {

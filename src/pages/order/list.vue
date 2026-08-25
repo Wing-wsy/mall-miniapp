@@ -43,6 +43,7 @@
 import { ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { fetchOrderList, type OrderVO } from "@/api/order";
+import { prefetchCoverUrls } from "@/utils/media";
 
 const tabs = [
   { label: "全部", status: undefined as number | undefined },
@@ -76,6 +77,7 @@ async function load() {
   try {
     const res = await fetchOrderList(current.value);
     list.value = res.data || [];
+    await Promise.all(list.value.map((order) => prefetchCoverUrls(order.items)));
   } catch (e: any) {
     uni.showToast({ title: e?.message || "加载失败", icon: "none" });
   } finally {

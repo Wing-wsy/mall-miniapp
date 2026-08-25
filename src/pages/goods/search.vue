@@ -58,6 +58,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { searchProducts, type ProductCardVO } from "@/api/product";
 import { linePrice, salePrice } from "@/utils/price";
+import { prefetchCoverUrls } from "@/utils/media";
 import { useThemeStore } from "@/stores/theme";
 
 const themeStore = useThemeStore();
@@ -130,6 +131,10 @@ async function load(reset: boolean) {
       return;
     }
     const chunk = res.data?.list || [];
+    await prefetchCoverUrls(chunk);
+    if (current !== seq) {
+      return;
+    }
     list.value = reset ? chunk : list.value.concat(chunk);
     page.value = nextPage;
     hasMore.value = !!res.data?.hasMore;
@@ -235,20 +240,16 @@ onLoad((query) => {
 }
 
 .cover-wrap {
-  position: relative;
   width: 100%;
-  height: 0;
-  padding-bottom: 100%;
+  height: 340rpx;
   overflow: hidden;
 }
 
 .cover-img,
 .cover-fallback {
-  position: absolute;
-  left: 0;
-  top: 0;
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 .cover-fallback {

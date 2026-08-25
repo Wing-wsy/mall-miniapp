@@ -7,8 +7,10 @@
       indicator-color="rgba(255,255,255,0.45)"
       indicator-active-color="#ffffff"
     >
-      <swiper-item v-for="(url, index) in gallery" :key="index" @click="preview(index)">
-        <image class="cover" :src="url" mode="aspectFit" />
+      <swiper-item v-for="(url, index) in gallery" :key="index">
+        <view class="cover-wrap" @click="preview(index)">
+          <image class="cover" :src="url" mode="aspectFill" />
+        </view>
       </swiper-item>
     </swiper>
     <view v-else class="cover-fallback">
@@ -64,8 +66,11 @@
       <text v-if="!product.detailHtml && !detailImages.length" class="detail">暂无详情</text>
     </view>
     <view class="bottom-bar">
-      <button class="buy-btn" :disabled="adding || !canAdd" @click="onAddCart">
+      <button class="cart-btn" :disabled="adding || buying || !canAdd" @click="onAddCart">
         {{ canAdd ? "加入购物车" : "已售罄" }}
+      </button>
+      <button class="buy-btn" :disabled="adding || buying || !canAdd" @click="onBuyNow">
+        立即购买
       </button>
     </view>
   </view>
@@ -82,12 +87,14 @@ import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO 
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
+import { prefetchImageField } from "@/utils/media";
 
 const userStore = useUserStore();
 const product = ref<ProductDetailVO | null>(null);
 const selectedSkuId = ref<number | null>(null);
 const qty = ref(1);
 const adding = ref(false);
+const buying = ref(false);
 const error = ref("");
 const cartItems = ref<CartItemVO[]>([]);
 const fromCartId = ref(0);
@@ -228,21 +235,28 @@ function toast(msg: string) {
   uni.showToast({ title: msg, icon: "none" });
 }
 
-async function onAddCart() {
+async function ensureReady() {
   if (!selectedSku.value) {
     toast("请选择规格");
-    return;
+    return false;
   }
   if (!canAdd.value) {
     toast("已售罄");
-    return;
+    return false;
   }
   if (!userStore.isLogin) {
     goLogin();
-    return;
+    return false;
   }
   if (qty.value > maxQty.value) {
     toast(maxQty.value <= 0 ? "购物车已达可购上限" : `最多可购 ${maxQty.value}`);
+    return false;
+  }
+  return true;
+}
+
+async function onAddCart() {
+  if (!(await ensureReady())) {
     return;
   }
   adding.value = true;
@@ -267,6 +281,38 @@ async function onAddCart() {
   }
 }
 
+async function onBuyNow() {
+  if (!(await ensureReady()) || !selectedSku.value) {
+    return;
+  }
+  buying.value = true;
+  try {
+    const existing = cartItems.value.find((item) => item.skuId === selectedSku.value?.id);
+    let cartId = existing?.id || fromCartId.value;
+    if (cartId) {
+      await updateCartQty(cartId, qty.value);
+    } else {
+      const res = await addCart(selectedSku.value.id, qty.value);
+      cartId = res.data?.id || 0;
+    }
+    if (!cartId) {
+      toast("下单失败");
+      return;
+    }
+    await loadCartOccupancy();
+    await refreshBadge();
+    uni.navigateTo({ url: `/pages/order/confirm?cartIds=${cartId}` });
+  } catch (e: unknown) {
+    if (e instanceof ApiError && e.code === 401) {
+      goLogin();
+      return;
+    }
+    toast(e instanceof Error ? e.message : "下单失败");
+  } finally {
+    buying.value = false;
+  }
+}
+
 function preview(index: number) {
   uni.previewImage({ current: gallery.value[index], urls: gallery.value });
 }
@@ -288,6 +334,11 @@ onLoad((query) => {
   fetchProductDetail(id)
     .then(async (res) => {
       product.value = res.data;
+      if (product.value) {
+        await prefetchImageField(product.value, "coverUrl");
+        await prefetchImageField(product.value, "galleryUrls");
+        await prefetchImageField(product.value, "detailImageUrls");
+      }
       const match = skuId ? res.data?.skus?.find((sku) => sku.id === skuId) : null;
       const first = match || res.data?.skus?.[0];
       selectedSkuId.value = first ? first.id : null;
@@ -317,9 +368,15 @@ onLoad((query) => {
   background: #fff;
 }
 
+.cover-wrap {
+  width: 100%;
+  height: 750rpx;
+}
+
 .cover {
   width: 100%;
   height: 750rpx;
+  display: block;
 }
 
 .cover-fallback {
@@ -467,15 +524,29 @@ onLoad((query) => {
   padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.04);
+  display: flex;
+  gap: 16rpx;
+}
+
+.cart-btn,
+.buy-btn {
+  flex: 1;
+  margin: 0;
+  border-radius: 44rpx;
+  font-size: 28rpx;
+}
+
+.cart-btn {
+  background: #fff1ee;
+  color: #ff5a3d;
 }
 
 .buy-btn {
   background: #ff5a3d;
   color: #fff;
-  border-radius: 44rpx;
-  font-size: 30rpx;
 }
 
+.cart-btn[disabled],
 .buy-btn[disabled] {
   background: #d1d5db;
   color: #fff;

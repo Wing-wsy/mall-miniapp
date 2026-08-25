@@ -6,13 +6,22 @@
       <view v-for="fest in festivals" :key="fest.id" class="block">
         <view class="block-head">
           <text class="block-title">{{ fest.name }}</text>
+          <text v-if="(trails[fest.id] || []).length" class="back" @click="popDrill(fest.id)">返回</text>
         </view>
-        <view class="list">
+        <view v-if="isLeaf(viewingOf(fest))" class="list">
+          <view class="list-item" @click="goList(viewingOf(fest)!)">
+            <view class="thumb">
+              <text>{{ viewingOf(fest)!.name.slice(0, 1) }}</text>
+            </view>
+            <text class="name">查看商品</text>
+          </view>
+        </view>
+        <view v-else class="list">
           <view
-            v-for="item in fest.children || []"
+            v-for="item in viewingOf(fest)?.children || []"
             :key="item.id"
             class="list-item"
-            @click="goList(item)"
+            @click="onTap(fest, item)"
           >
             <view class="thumb">
               <text>{{ item.name.slice(0, 1) }}</text>
@@ -31,13 +40,40 @@ import { onShow } from "@dcloudio/uni-app";
 import { fetchFestivalCategoryTree, type CategoryNodeVO } from "@/api/category";
 
 const festivals = ref<CategoryNodeVO[]>([]);
+const trails = ref<Record<number, CategoryNodeVO[]>>({});
 const loading = ref(false);
+
+function isLeaf(node?: CategoryNodeVO) {
+  if (!node) return false;
+  if (node.leaf === true) return true;
+  return !(node.children && node.children.length);
+}
+
+function viewingOf(fest: CategoryNodeVO) {
+  const trail = trails.value[fest.id] || [];
+  return trail.length ? trail[trail.length - 1] : fest;
+}
+
+function popDrill(id: number) {
+  const trail = trails.value[id] || [];
+  trails.value = { ...trails.value, [id]: trail.slice(0, -1) };
+}
+
+function onTap(fest: CategoryNodeVO, item: CategoryNodeVO) {
+  if (isLeaf(item)) {
+    goList(item);
+    return;
+  }
+  const trail = trails.value[fest.id] || [];
+  trails.value = { ...trails.value, [fest.id]: [...trail, item] };
+}
 
 async function load() {
   loading.value = true;
   try {
     const res = await fetchFestivalCategoryTree();
     festivals.value = res.data || [];
+    trails.value = {};
   } catch (e: any) {
     uni.showToast({ title: e?.message || "加载失败", icon: "none" });
   } finally {
@@ -71,12 +107,20 @@ onShow(load);
 
 .block-head {
   margin-bottom: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .block-title {
   font-size: 32rpx;
   font-weight: 700;
   color: #111827;
+}
+
+.back {
+  font-size: 24rpx;
+  color: #d97706;
 }
 
 .list {

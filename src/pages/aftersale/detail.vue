@@ -66,6 +66,7 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { cancelAfterSale, fetchAfterSaleDetail, fillAfterSaleReturn, type AfterSaleVO } from "@/api/aftersale";
+import { prefetchCoverUrls, prefetchImageField } from "@/utils/media";
 
 const detail = ref<AfterSaleVO | null>(null);
 const error = ref("");
@@ -112,6 +113,10 @@ async function load() {
   try {
     const res = await fetchAfterSaleDetail(id.value);
     detail.value = res.data;
+    if (detail.value) {
+      await prefetchCoverUrls(detail.value.items);
+      await prefetchImageField(detail.value, "images");
+    }
   } catch (e: any) {
     error.value = e?.message || "加载失败";
   }

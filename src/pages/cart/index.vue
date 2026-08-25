@@ -83,6 +83,7 @@ import {
   type CartItemVO,
 } from "@/api/cart";
 import { salePrice } from "@/utils/price";
+import { prefetchCoverUrls } from "@/utils/media";
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 
@@ -149,6 +150,7 @@ async function load() {
     }
     cartItems.value = next;
     selectedIds.value = nextSelected;
+    await prefetchCoverUrls(cartItems.value);
     await refreshBadge(res.data?.totalQuantity || 0);
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {

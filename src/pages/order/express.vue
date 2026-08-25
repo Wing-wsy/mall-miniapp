@@ -45,6 +45,7 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { request } from "@/utils/request";
+import { prefetchImageField } from "@/utils/media";
 
 interface ExpressTraceItem {
   time?: string;
@@ -89,6 +90,9 @@ async function load() {
       method: "GET",
     });
     detail.value = res.data;
+    if (detail.value) {
+      await prefetchImageField(detail.value, "coverUrl");
+    }
     error.value = "";
   } catch (e: unknown) {
     detail.value = null;

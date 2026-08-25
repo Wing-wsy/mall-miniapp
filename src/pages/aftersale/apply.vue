@@ -74,6 +74,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { applyAfterSale, fetchAfterSaleReasons, type AfterSaleReasonVO } from "@/api/aftersale";
 import { fetchOrderDetail, type OrderVO } from "@/api/order";
 import { uploadAppFile } from "@/api/file";
+import { prefetchCoverUrls } from "@/utils/media";
 
 const order = ref<OrderVO | null>(null);
 const error = ref("");
@@ -116,6 +117,7 @@ onLoad(async (query) => {
   try {
     const res = await fetchOrderDetail(id);
     order.value = res.data;
+    await prefetchCoverUrls(order.value?.items);
     const allowed = res.data?.allowedAfterSaleTypes || [];
     if (!allowed.length) {
       error.value = "当前订单不可申请售后";

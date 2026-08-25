@@ -7,8 +7,10 @@
       indicator-color="rgba(255,255,255,0.45)"
       indicator-active-color="#ffffff"
     >
-      <swiper-item v-for="(url, index) in gallery" :key="index" @click="preview(index)">
-        <image class="cover" :src="url" mode="aspectFit" />
+      <swiper-item v-for="(url, index) in gallery" :key="index">
+        <view class="cover-wrap" @click="preview(index)">
+          <image class="cover" :src="url" mode="aspectFill" />
+        </view>
       </swiper-item>
     </swiper>
     <view v-else class="cover-fallback">
@@ -74,6 +76,7 @@ import { onLoad } from "@dcloudio/uni-app";
 import { fetchPointProductDetail } from "@/api/point";
 import type { ProductDetailVO, ProductSkuVO } from "@/api/product";
 import { useUserStore } from "@/stores/user";
+import { prefetchImageField } from "@/utils/media";
 
 const userStore = useUserStore();
 const product = ref<ProductDetailVO | null>(null);
@@ -152,8 +155,13 @@ onLoad((query) => {
     return;
   }
   fetchPointProductDetail(id)
-    .then((res) => {
+    .then(async (res) => {
       product.value = res.data?.product || null;
+      if (product.value) {
+        await prefetchImageField(product.value, "coverUrl");
+        await prefetchImageField(product.value, "galleryUrls");
+        await prefetchImageField(product.value, "detailImageUrls");
+      }
       unitPoints.value = res.data?.points || 0;
       selectedSkuId.value = product.value?.skus?.[0]?.id || null;
     })
@@ -175,9 +183,16 @@ onLoad((query) => {
   height: 750rpx;
   background: #fff;
 }
+
+.cover-wrap {
+  width: 100%;
+  height: 750rpx;
+}
+
 .cover {
   width: 100%;
   height: 750rpx;
+  display: block;
 }
 .cover-fallback {
   display: flex;

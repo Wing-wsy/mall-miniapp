@@ -32,6 +32,7 @@ import {
   type ProductCardVO,
 } from "@/api/product";
 import { linePrice, salePrice } from "@/utils/price";
+import { prefetchImageField } from "@/utils/media";
 
 const list = ref<ProductCardVO[]>([]);
 const loading = ref(false);
@@ -50,6 +51,7 @@ async function load(options: Record<string, string | undefined>) {
     } else {
       list.value = [];
     }
+    await Promise.all(list.value.map((item) => prefetchImageField(item, "coverUrl")));
   } catch (e: any) {
     uni.showToast({ title: e?.message || "加载失败", icon: "none" });
   } finally {
@@ -87,20 +89,16 @@ onLoad((query) => load((query || {}) as Record<string, string | undefined>));
 }
 
 .cover-wrap {
-  position: relative;
   width: 100%;
-  height: 0;
-  padding-bottom: 100%;
+  height: 340rpx;
   overflow: hidden;
 }
 
 .cover-img,
 .cover-fallback {
-  position: absolute;
-  left: 0;
-  top: 0;
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 .cover-fallback {

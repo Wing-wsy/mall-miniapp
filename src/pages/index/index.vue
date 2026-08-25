@@ -39,11 +39,11 @@
           <view v-if="item.imageUrl" class="banner-img-wrap">
             <image class="banner-img" :src="item.imageUrl" mode="aspectFill" />
           </view>
-          <view v-else class="banner-fallback" :style="{ background: themeStore.primary }">
-            <text class="banner-tag">{{ heroTag }}</text>
-            <text class="banner-title">{{ item.title || heroTitle }}</text>
-            <text class="banner-sub">{{ heroSub }}</text>
-          </view>
+            <view v-else class="banner-fallback" :style="{ background: themeStore.primary }">
+              <text class="banner-tag">{{ heroTag }}</text>
+              <text class="banner-title">{{ item.title || heroTitle }}</text>
+              <text class="banner-sub">{{ heroSub }}</text>
+            </view>
         </swiper-item>
       </swiper>
 
@@ -179,6 +179,7 @@ import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
 import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
+import { prefetchImage, prefetchImageField } from "@/utils/media";
 
 const themeStore = useThemeStore();
 const userStore = useUserStore();
@@ -245,7 +246,7 @@ const pageStyle = computed(() => ({
   background: themeStore.pageBg,
 }));
 
-const heroImageUrl = computed(() => themeStore.assets.heroImageUrl || "");
+const heroImageUrl = ref("");
 const heroTag = computed(() => themeStore.copy.heroTag || "今日精选");
 const heroTitle = computed(() => themeStore.copy.heroTitle || "品质好物 用心挑选");
 const heroSub = computed(() => themeStore.copy.heroSub || "点击查看商品详情");
@@ -355,6 +356,7 @@ async function loadBanners() {
   } catch (e) {
     banners.value = [{ id: 0, title: heroTitle.value, imageUrl: "", productId: 1 }];
   }
+  await Promise.all(banners.value.map((item) => prefetchImageField(item, "imageUrl")));
 }
 
 async function loadHot() {
@@ -364,6 +366,7 @@ async function loadHot() {
   } catch (e) {
     goods.value = [];
   }
+  await Promise.all(goods.value.map((item) => prefetchImageField(item, "coverUrl")));
 }
 
 async function loadCatalog(reset: boolean) {
@@ -386,6 +389,10 @@ async function loadCatalog(reset: boolean) {
       return;
     }
     const chunk = res.data?.list || [];
+    await Promise.all(chunk.map((item) => prefetchImageField(item, "coverUrl")));
+    if (seq !== catalogSeq) {
+      return;
+    }
     catalog.value = reset ? chunk : catalog.value.concat(chunk);
     catalogPage.value = page;
     catalogHasMore.value = !!res.data?.hasMore;
@@ -416,6 +423,7 @@ async function loadNavEntries() {
   } catch (e) {
     entries.value = FALLBACK_ENTRIES;
   }
+  await Promise.all(entries.value.map((item) => prefetchImageField(item, "iconUrl")));
 }
 
 async function loadClaimable() {
@@ -442,6 +450,7 @@ async function loadNotice() {
 
 onShow(async () => {
   await themeStore.loadCurrent();
+  heroImageUrl.value = await prefetchImage(themeStore.assets.heroImageUrl || "");
   if (themeStore.copy.navTitle) {
     try {
       uni.setNavigationBarTitle({ title: themeStore.copy.navTitle });
@@ -560,6 +569,7 @@ onShow(async () => {
 .banner-img {
   width: 100%;
   height: 280rpx;
+  display: block;
 }
 
 .banner-fallback {
@@ -626,6 +636,8 @@ onShow(async () => {
 .entry-icon-img {
   width: 56rpx;
   height: 56rpx;
+  display: block;
+  flex-shrink: 0;
 }
 
 .entry-icon.is-custom {
@@ -766,6 +778,7 @@ onShow(async () => {
   top: 0;
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 .cover-fallback {

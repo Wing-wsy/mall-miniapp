@@ -26,6 +26,7 @@
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchPointProducts, type PointProductCardVO } from "@/api/point";
+import { prefetchCoverUrls } from "@/utils/media";
 
 const list = ref<PointProductCardVO[]>([]);
 const loading = ref(false);
@@ -35,6 +36,7 @@ async function load() {
   try {
     const res = await fetchPointProducts();
     list.value = res.data || [];
+    await prefetchCoverUrls(list.value);
   } catch (e: any) {
     uni.showToast({ title: e?.message || "加载失败", icon: "none" });
   } finally {
@@ -69,19 +71,15 @@ onShow(load);
   margin-bottom: 20rpx;
 }
 .cover-wrap {
-  position: relative;
   width: 100%;
-  height: 0;
-  padding-bottom: 100%;
+  height: 340rpx;
   overflow: hidden;
 }
 .cover-img,
 .cover-fallback {
-  position: absolute;
-  left: 0;
-  top: 0;
   width: 100%;
   height: 100%;
+  display: block;
 }
 .cover-fallback {
   background: #ffe8e2;

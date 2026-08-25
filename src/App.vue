@@ -41,4 +41,8 @@ page {
 button::after {
   border: none;
 }
+
+image {
+  display: block;
+}
 </style>

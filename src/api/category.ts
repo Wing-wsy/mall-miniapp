@@ -5,6 +5,7 @@ export interface CategoryNodeVO {
   parentId: number;
   name: string;
   iconUrl?: string;
+  leaf?: boolean;
   children?: CategoryNodeVO[];
 }
 

@@ -21,7 +21,7 @@
       <text class="addr">{{ order.receiverAddress }}</text>
     </view>
     <view class="card">
-      <view v-for="item in order.items" :key="item.id" class="goods">
+      <view v-for="item in order.items" :key="item.id" class="goods" @click="goGoods(item)">
         <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
         <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
         <view class="info">
@@ -78,7 +78,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
-import { cancelOrder, confirmOrder, fetchOrderDetail, prepayOrder, type OrderVO } from "@/api/order";
+import { cancelOrder, confirmOrder, fetchOrderDetail, prepayOrder, type OrderItemVO, type OrderVO } from "@/api/order";
+import { prefetchCoverUrls } from "@/utils/media";
 
 const order = ref<OrderVO | null>(null);
 const error = ref("");
@@ -155,6 +156,7 @@ async function load() {
   try {
     const res = await fetchOrderDetail(orderId.value);
     order.value = res.data;
+    await prefetchCoverUrls(order.value?.items);
     startTimer();
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : "加载失败";
@@ -299,6 +301,18 @@ function formatTime(t?: string) {
     return "";
   }
   return String(t).replace("T", " ").slice(0, 16);
+}
+
+function goGoods(item: OrderItemVO) {
+  if (!item.productId) {
+    return;
+  }
+  if (isPoints.value) {
+    uni.navigateTo({ url: `/pages/points/detail?id=${item.productId}` });
+    return;
+  }
+  const skuQuery = item.skuId ? `&skuId=${item.skuId}` : "";
+  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}` });
 }
 
 function goExpress() {
