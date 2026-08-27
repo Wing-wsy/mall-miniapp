@@ -11,6 +11,7 @@
           </view>
           <text v-if="!userStore.isLogin" class="tip">登录后同步订单与专属价格</text>
           <text v-if="userStore.isLogin" class="points">当前积分 {{ userStore.userInfo?.points ?? 0 }}</text>
+          <text v-if="showBalance" class="points" @click.stop="goBalance">我的余额 ¥{{ balanceText }}</text>
           <text v-if="needPhone" class="bind" @click.stop="goLogin">授权手机号，解锁会员价</text>
         </view>
       </view>
@@ -78,6 +79,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { fetchOrderCounts } from "@/api/order";
 import { fetchShopContact } from "@/api/shop";
+import { fetchSupplierEntry } from "@/api/supplier";
 
 const userStore = useUserStore();
 const statusBarHeight = ref(20);
@@ -87,32 +89,47 @@ try {
   // ignore
 }
 
-const menus = [
-  { name: "收货地址", action: "address" },
-  { name: "我的订单", action: "orders" },
-  { name: "退款/售后", action: "aftersale" },
-  { name: "我的优惠券", action: "coupons" },
-  { name: "领券中心", action: "couponActivity" },
-  { name: "积分商城", action: "pointsMall" },
-  { name: "积分明细", action: "pointLogs" },
-  { name: "礼品兑换", action: "voucher" },
-  { name: "联系客服", action: "contact" },
-];
+const showBalance = computed(() => userStore.isLogin && !!userStore.userInfo?.level);
+const balanceText = computed(() => Number(userStore.userInfo?.balance ?? 0).toFixed(2));
+
+const menus = computed(() => {
+  const list = [
+    { name: "收货地址", action: "address" },
+    { name: "我的订单", action: "orders" },
+    { name: "退款/售后", action: "aftersale" },
+    { name: "我的优惠券", action: "coupons" },
+    { name: "领券中心", action: "couponActivity" },
+    { name: "积分商城", action: "pointsMall" },
+    { name: "积分明细", action: "pointLogs" },
+  ];
+  if (showBalance.value) {
+    list.push({ name: "我的余额", action: "balance" });
+  }
+  list.push({ name: "礼品兑换", action: "voucher" });
+  if (showSupplier.value) {
+    list.push({ name: "我的供应商", action: "supplier" });
+  }
+  list.push({ name: "联系客服", action: "contact" });
+  return list;
+});
 
 const emptyCounts = { unpaid: 0, waitShip: 0, waitRecv: 0, done: 0 };
 const counts = ref({ ...emptyCounts });
 const contact = ref({ phone: "", email: "" });
 const contactVisible = ref(false);
+const showSupplier = ref(false);
 let contactLoading = false;
 const displayName = computed(() =>
   userStore.isLogin ? userStore.userInfo?.nickname || "微信用户" : "点击登录"
 );
 const levelName = computed(() => userStore.userInfo?.level?.name || "");
 const needPhone = computed(() => userStore.isLogin && !userStore.userInfo?.phone);
+
 const avatarText = computed(() => (userStore.isLogin ? "微" : "登"));
 
 onShow(() => {
   loadContact();
+  loadSupplierEntry();
   if (userStore.isLogin) {
     userStore.refreshProfile().catch(() => {
       userStore.clearSession();
@@ -155,6 +172,17 @@ function goOrders(status?: number) {
   }
   const q = status != null ? `?status=${status}` : "";
   uni.navigateTo({ url: `/pages/order/list${q}` });
+}
+
+function goBalance() {
+  if (!userStore.isLogin) {
+    goLogin();
+    return;
+  }
+  if (!showBalance.value) {
+    return;
+  }
+  uni.navigateTo({ url: "/pages/balance/logs" });
 }
 
 function onMenu(item: { name: string; action: string }) {
@@ -210,6 +238,10 @@ function onMenu(item: { name: string; action: string }) {
     uni.navigateTo({ url: "/pages/points/logs" });
     return;
   }
+  if (item.action === "balance") {
+    goBalance();
+    return;
+  }
   if (item.action === "voucher") {
     if (!userStore.isLogin) {
       goLogin();
@@ -218,11 +250,32 @@ function onMenu(item: { name: string; action: string }) {
     uni.navigateTo({ url: "/pages/voucher/redeem" });
     return;
   }
+  if (item.action === "supplier") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/supplier/list" });
+    return;
+  }
   if (item.action === "contact") {
     onContact();
     return;
   }
   toast(item.name);
+}
+
+async function loadSupplierEntry() {
+  if (!userStore.isLogin) {
+    showSupplier.value = false;
+    return;
+  }
+  try {
+    const res = await fetchSupplierEntry();
+    showSupplier.value = !!res.data;
+  } catch {
+    showSupplier.value = false;
+  }
 }
 
 async function loadContact() {

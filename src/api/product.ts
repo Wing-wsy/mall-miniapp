@@ -29,6 +29,9 @@ export interface ProductDetailVO {
   stock?: number;
   baseSpecName?: string;
   skus?: ProductSkuVO[];
+  selfOperated?: boolean;
+  supplierName?: string;
+  shipFromLabel?: string;
 }
 
 export interface ProductCardVO {
@@ -40,6 +43,8 @@ export interface ProductCardVO {
   originPrice?: number | string;
   memberPrice?: number | string | null;
   multiSpec?: boolean;
+  selfOperated?: boolean;
+  shipFromLabel?: string;
 }
 
 export function fetchProductDetail(id: number) {

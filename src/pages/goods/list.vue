@@ -4,12 +4,13 @@
     <view v-else-if="!list.length" class="empty">暂无商品</view>
     <view v-else class="goods-grid">
       <view v-for="item in list" :key="item.id" class="goods-card" @click="goDetail(item.id)">
-        <view class="cover-wrap">
-          <image v-if="item.coverUrl" class="cover-img" :src="item.coverUrl" mode="aspectFill" />
-          <view v-else class="cover-fallback">
-            <text>{{ (item.name || "").slice(0, 1) }}</text>
+          <view class="cover-wrap">
+            <image v-if="item.coverUrl" class="cover-img" :src="item.coverUrl" mode="aspectFill" />
+            <view v-else class="cover-fallback">
+              <text>{{ (item.name || "").slice(0, 1) }}</text>
+            </view>
+            <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
           </view>
-        </view>
         <view class="body">
           <text class="name">{{ item.name }}</text>
           <view class="price-row">
@@ -32,6 +33,7 @@ import {
   type ProductCardVO,
 } from "@/api/product";
 import { linePrice, salePrice } from "@/utils/price";
+import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
 
 const list = ref<ProductCardVO[]>([]);
@@ -89,9 +91,25 @@ onLoad((query) => load((query || {}) as Record<string, string | undefined>));
 }
 
 .cover-wrap {
+  position: relative;
   width: 100%;
   height: 340rpx;
   overflow: hidden;
+}
+
+.ship-badge {
+  position: absolute;
+  left: 8rpx;
+  top: 8rpx;
+  padding: 4rpx 10rpx;
+  font-size: 20rpx;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.55);
+  border-radius: 8rpx;
+}
+
+.ship-badge.self {
+  background: #ff5a3d;
 }
 
 .cover-img,

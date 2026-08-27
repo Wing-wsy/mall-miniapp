@@ -113,6 +113,7 @@
             <view v-else class="cover-fallback">
               <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
             </view>
+            <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
@@ -147,6 +148,7 @@
             <view v-else class="cover-fallback">
               <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
             </view>
+            <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
@@ -179,6 +181,7 @@ import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
 import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
+import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImage, prefetchImageField } from "@/utils/media";
 
 const themeStore = useThemeStore();
@@ -769,6 +772,22 @@ onShow(async () => {
   height: 0;
   padding-bottom: 100%;
   overflow: hidden;
+}
+
+.ship-badge {
+  position: absolute;
+  left: 8rpx;
+  top: 8rpx;
+  z-index: 1;
+  padding: 4rpx 10rpx;
+  font-size: 20rpx;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.55);
+  border-radius: 8rpx;
+}
+
+.ship-badge.self {
+  background: #ff5a3d;
 }
 
 .goods-cover-img,

@@ -142,9 +142,33 @@
       }
     },
     {
+      "path": "pages/balance/logs",
+      "style": {
+        "navigationBarTitleText": "我的余额"
+      }
+    },
+    {
       "path": "pages/voucher/redeem",
       "style": {
         "navigationBarTitleText": "礼品兑换"
+      }
+    },
+    {
+      "path": "pages/invite/level",
+      "style": {
+        "navigationBarTitleText": "开通会员"
+      }
+    },
+    {
+      "path": "pages/supplier/list",
+      "style": {
+        "navigationBarTitleText": "我的供应商"
+      }
+    },
+    {
+      "path": "pages/supplier/form",
+      "style": {
+        "navigationBarTitleText": "申请供应商"
       }
     },
     {

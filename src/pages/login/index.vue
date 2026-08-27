@@ -20,7 +20,7 @@
           <input v-model="mockPhone" class="mock-input" type="number" maxlength="11" placeholder="本地 mock 手机号" />
           <button class="ghost-btn" :loading="loading" @click="onMockBind">绑定测试手机号</button>
         </view>
-        <text class="skip" @click="goBack">暂不授权，稍后再说</text>
+        <text v-if="!forcePhone" class="skip" @click="goBack">暂不授权，稍后再说</text>
       </template>
       <text class="tip">授权手机号后，若命中会员名单将显示等级并享受折扣</text>
     </view>
@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 
 const userStore = useUserStore();
@@ -36,6 +37,23 @@ const loading = ref(false);
 const step = ref<"login" | "phone">("login");
 const mockPhone = ref("");
 const mockMode = ref(true);
+const redirect = ref("");
+const forcePhone = ref(false);
+
+onLoad((query) => {
+  const raw = String((query && query.redirect) || "");
+  try {
+    redirect.value = raw ? decodeURIComponent(raw) : "";
+  } catch {
+    redirect.value = raw;
+  }
+  forcePhone.value = String((query && query.forcePhone) || "") === "1";
+  if (userStore.isLogin && !userStore.userInfo?.phone) {
+    step.value = "phone";
+  } else if (userStore.isLogin && userStore.userInfo?.phone && redirect.value) {
+    goBack();
+  }
+});
 
 if (userStore.isLogin && !userStore.userInfo?.phone) {
   step.value = "phone";
@@ -94,10 +112,27 @@ async function doBind(payload: { code?: string; phone?: string }) {
 
 function goBack() {
   setTimeout(() => {
-    uni.navigateBack({
-      fail: () => uni.switchTab({ url: "/pages/mine/index" }),
-    });
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
+      uni.navigateBack({
+        fail: goRedirectOrHome,
+      });
+      return;
+    }
+    goRedirectOrHome();
   }, 400);
+}
+
+function goRedirectOrHome() {
+  const target = redirect.value;
+  if (target && target.startsWith("/pages/") && !target.startsWith("/pages/login/")) {
+    uni.redirectTo({
+      url: target,
+      fail: () => uni.switchTab({ url: "/pages/index/index" }),
+    });
+    return;
+  }
+  uni.switchTab({ url: "/pages/mine/index" });
 }
 </script>
 

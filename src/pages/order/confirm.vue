@@ -16,7 +16,75 @@
         <text class="arrow">›</text>
       </view>
 
-      <view class="card">
+      <template v-if="!isPoints && !isVoucher && groups.length">
+        <view v-for="g in groups" :key="groupKey(g.supplierId)" class="card">
+        <text class="group-title">{{ publicShipFrom(g) }}</text>
+        <view v-for="item in g.items || []" :key="item.id || item.skuId" class="goods" @click="goGoods(item)">
+          <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
+          <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 2) }}</view>
+          <view class="info">
+            <text class="gname">{{ item.productName }}</text>
+            <text class="spec">{{ item.specName }}</text>
+            <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
+            <view class="row">
+              <text class="price">¥{{ money(item.price) }}</text>
+              <text class="qty">x{{ item.quantity }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="line">
+          <text>运费</text>
+          <text>{{ groupFreight(g) }}</text>
+        </view>
+        <view v-if="Number(g.memberDiscountAmount) > 0" class="line">
+          <text>会员折扣</text>
+          <text class="off">-¥{{ money(g.memberDiscountAmount) }}</text>
+        </view>
+        <view class="line">
+          <text>优惠券</text>
+          <text class="coupon-val">{{ groupCouponLabel(g) }}</text>
+        </view>
+        <view v-if="(g.coupons || []).length" class="coupon-list">
+          <view
+            class="coupon-card"
+            :class="{ on: couponIdOf(g) === 0 }"
+            @click="pickGroupCoupon(g.supplierId, 0)"
+          >
+            <view class="coupon-bar none" />
+            <view class="coupon-body">
+              <text class="coupon-name">不使用优惠券</text>
+              <text class="coupon-desc">{{ g.memberDiscountApplied ? "享受会员折扣" : "按原价结算" }}</text>
+            </view>
+            <text v-if="couponIdOf(g) === 0" class="coupon-check">✓</text>
+          </view>
+          <view
+            v-for="c in g.coupons || []"
+            :key="c.id"
+            class="coupon-card"
+            :class="{ on: couponIdOf(g) === c.id, off: !c.usable }"
+            @click="pickGroupCoupon(g.supplierId, c.id, c)"
+          >
+            <view class="coupon-bar" />
+            <view class="coupon-body">
+              <text class="coupon-benefit">{{ c.benefitText }}</text>
+              <text class="coupon-name">{{ c.name }}</text>
+              <text class="coupon-desc">{{ c.usable ? `可减 ¥${money(c.couponAmount)}${c.tip ? " · " + c.tip : ""}` : c.reason || "不可用" }}</text>
+            </view>
+            <text v-if="couponIdOf(g) === c.id" class="coupon-check">✓</text>
+          </view>
+        </view>
+        <view v-if="Number(g.couponAmount) > 0" class="line">
+          <text>优惠</text>
+          <text class="off">-¥{{ money(g.couponAmount) }}</text>
+        </view>
+        <view class="line">
+          <text>小计</text>
+          <text class="price">¥{{ money(g.payAmount) }}</text>
+        </view>
+        </view>
+      </template>
+
+      <view v-else class="card">
         <view v-for="item in items" :key="item.id || item.skuId" class="goods" @click="goGoods(item)">
           <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 2) }}</view>
@@ -49,15 +117,15 @@
           <text>支付方式</text>
           <text>实体兑换券</text>
         </view>
-        <view v-if="!isPoints && !isVoucher && Number(memberDiscountAmount) > 0" class="line">
+        <view v-if="!isPoints && !isVoucher && !groups.length && Number(memberDiscountAmount) > 0" class="line">
           <text>会员折扣{{ memberLevelName ? `（${memberLevelName}）` : "" }}</text>
           <text class="off">-¥{{ money(memberDiscountAmount) }}</text>
         </view>
-        <view v-if="!isPoints && !isVoucher" class="line">
+        <view v-if="!isPoints && !isVoucher && !groups.length" class="line">
           <text>优惠券</text>
           <text class="coupon-val">{{ couponLabel }}</text>
         </view>
-        <view v-if="!isPoints && !isVoucher && coupons.length" class="coupon-list">
+        <view v-if="!isPoints && !isVoucher && !groups.length && coupons.length" class="coupon-list">
           <view
             class="coupon-card"
             :class="{ on: selectedCouponId === 0 }"
@@ -86,7 +154,7 @@
             <text v-if="selectedCouponId === c.id" class="coupon-check">✓</text>
           </view>
         </view>
-        <view v-if="!isPoints && !isVoucher && Number(couponAmount) > 0" class="line">
+        <view v-if="!isPoints && !isVoucher && !groups.length && Number(couponAmount) > 0" class="line">
           <text>优惠</text>
           <text class="off">-¥{{ money(couponAmount) }}</text>
         </view>
@@ -113,11 +181,19 @@
 import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { fetchAddressDetail, type AddressVO } from "@/api/address";
-import { createOrder, createPointsOrder, previewOrder, previewPointsOrder, type OrderItemVO } from "@/api/order";
+import {
+  createOrder,
+  createPointsOrder,
+  previewOrder,
+  previewPointsOrder,
+  type OrderItemVO,
+  type OrderPreviewGroupVO,
+} from "@/api/order";
 import { previewVoucher, redeemVoucher } from "@/api/voucher";
 import { fetchCartCount } from "@/api/cart";
 import type { CouponVO } from "@/api/coupon";
 import { prefetchCoverUrls } from "@/utils/media";
+import { publicShipFrom } from "@/utils/supplier";
 
 const cartIds = ref<number[]>([]);
 const isPoints = ref(false);
@@ -143,6 +219,8 @@ const pointsAmount = ref(0);
 const memberPoints = ref(0);
 const selectedCouponId = ref<number | null>(null);
 const coupons = ref<CouponVO[]>([]);
+const groups = ref<OrderPreviewGroupVO[]>([]);
+const couponBySupplier = ref<Record<string, number>>({});
 const remark = ref("");
 const previewOk = ref(false);
 
@@ -229,8 +307,20 @@ async function loadPreview(silent = false) {
             code: voucherCode.value,
             addressId: stored || undefined,
           })
-        : await previewOrder(cartIds.value, selectedCouponId.value, stored || undefined);
+        : await previewOrder(
+            cartIds.value,
+            selectedCouponId.value,
+            stored || undefined,
+            groupCouponsPayload()
+          );
     items.value = res.data?.items || [];
+    groups.value = res.data?.groups || [];
+    for (const g of groups.value) {
+      const key = groupKey(g.supplierId);
+      if (couponBySupplier.value[key] == null && g.selectedCouponId != null) {
+        couponBySupplier.value[key] = Number(g.selectedCouponId);
+      }
+    }
     await prefetchCoverUrls(items.value);
     goodsAmount.value = money(res.data?.goodsAmount);
     freightAmount.value = money(res.data?.freightAmount);
@@ -316,6 +406,7 @@ async function onSubmit() {
           addressId: address.value.id,
           remark: remark.value || undefined,
           couponId: selectedCouponId.value ?? 0,
+          groupCoupons: groupCouponsPayload(),
         });
     uni.removeStorageSync("mall_order_address_id");
     if (isVoucher.value) {
@@ -334,7 +425,17 @@ async function onSubmit() {
         // ignore
       }
     }
-    uni.redirectTo({ url: `/pages/order/detail?id=${res.data.id}` });
+    const created = isPoints.value || isVoucher.value
+      ? [res.data]
+      : res.data?.orders || [];
+    const first = created[0];
+    if (!first?.id) {
+      throw new Error("下单失败");
+    }
+    if (!isPoints.value && !isVoucher.value && created.length > 1) {
+      uni.showToast({ title: `已拆成${created.length}笔订单，请分别支付`, icon: "none" });
+    }
+    uni.redirectTo({ url: `/pages/order/detail?id=${first.id}` });
   } catch (e: any) {
     uni.showToast({ title: e?.message || "下单失败", icon: "none" });
   } finally {
@@ -351,6 +452,57 @@ function pickCoupon(id: number) {
     }
   }
   selectedCouponId.value = id;
+  loadPreview(true);
+}
+
+function groupKey(supplierId?: number | null) {
+  return String(supplierId ?? 0);
+}
+
+function couponIdOf(g: OrderPreviewGroupVO) {
+  const stored = couponBySupplier.value[groupKey(g.supplierId)];
+  if (stored != null) {
+    return stored;
+  }
+  return g.selectedCouponId ?? 0;
+}
+
+function groupCouponsPayload() {
+  if (!groups.value.length) {
+    return undefined;
+  }
+  return groups.value.map((g) => ({
+    supplierId: g.supplierId ?? null,
+    couponId: couponIdOf(g),
+  }));
+}
+
+function groupFreight(g: OrderPreviewGroupVO) {
+  if (!address.value) {
+    return g.freightHint || "请选择收货地址";
+  }
+  if (Number(g.freightAmount || 0) === 0) {
+    return g.freightFree ? "包邮" : "免运费";
+  }
+  return `¥${money(g.freightAmount)}`;
+}
+
+function groupCouponLabel(g: OrderPreviewGroupVO) {
+  const id = couponIdOf(g);
+  const list = g.coupons || [];
+  if (id == null || id === 0) {
+    return list.some((c) => c.usable) ? "未使用" : "暂无可用";
+  }
+  const hit = list.find((c) => c.id === id);
+  return hit ? hit.benefitText : "已选";
+}
+
+function pickGroupCoupon(supplierId: number | null | undefined, id: number, coupon?: CouponVO) {
+  if (id !== 0 && coupon && !coupon.usable) {
+    uni.showToast({ title: coupon.reason || "优惠券不可用", icon: "none" });
+    return;
+  }
+  couponBySupplier.value = { ...couponBySupplier.value, [groupKey(supplierId)]: id };
   loadPreview(true);
 }
 
@@ -375,6 +527,13 @@ function money(v: unknown) {
   background: #fff;
   border-radius: 20rpx;
   padding: 24rpx;
+}
+.group-title {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111827;
 }
 .address {
   display: flex;
@@ -456,7 +615,8 @@ function money(v: unknown) {
 .qty {
   color: #6b7280;
 }
-.form .line {
+.form .line,
+.card .line {
   display: flex;
   justify-content: space-between;
   padding: 12rpx 0;

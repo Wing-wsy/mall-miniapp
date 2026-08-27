@@ -6,6 +6,7 @@ export interface MemberLevelVO {
   iconUrl?: string;
   discount?: number | string;
   couponStackMode?: "STACK" | "MUTEX";
+  privileges?: string[];
 }
 
 export interface MemberVO {
@@ -14,6 +15,7 @@ export interface MemberVO {
   avatarUrl?: string;
   phone?: string;
   points?: number;
+  balance?: number | string | null;
   level?: MemberLevelVO | null;
 }
 

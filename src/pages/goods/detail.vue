@@ -22,6 +22,9 @@
         <text v-if="displayLinePrice" class="origin">¥{{ displayLinePrice }}</text>
       </view>
       <text class="name">{{ product.name }}</text>
+      <text v-if="publicShipFrom(product)" class="ship-tag" :class="{ self: product.selfOperated }">
+        {{ publicShipFrom(product) }}
+      </text>
       <text v-if="product.subtitle" class="subtitle">{{ product.subtitle }}</text>
       <text v-if="product.categoryPath" class="meta">分类：{{ product.categoryPath }}</text>
       <text v-if="product.festivalPaths?.length" class="meta">
@@ -87,6 +90,7 @@ import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO 
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
+import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
 
 const userStore = useUserStore();
@@ -423,6 +427,21 @@ onLoad((query) => {
   font-size: 34rpx;
   font-weight: 700;
   color: #111827;
+}
+
+.ship-tag {
+  display: inline-block;
+  margin-top: 12rpx;
+  padding: 4rpx 12rpx;
+  font-size: 22rpx;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 8rpx;
+}
+
+.ship-tag.self {
+  color: #ff5a3d;
+  background: #fff1ed;
 }
 
 .subtitle {

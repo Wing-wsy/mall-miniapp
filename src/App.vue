@@ -4,12 +4,30 @@ import { useThemeStore } from "@/stores/theme";
 import { fetchCartCount } from "@/api/cart";
 
 const themeStore = useThemeStore();
+const INVITE_CODE_KEY = "mall_level_invite_code";
+let lastInviteCode = "";
 
-onLaunch(async () => {
+function consumeInviteCode(options?: { path?: string; query?: Record<string, any> }) {
+  const code = String(options?.query?.code || "").trim();
+  if (!code || code === lastInviteCode) {
+    return;
+  }
+  const path = String(options?.path || "");
+  if (path.includes("pages/invite/level")) {
+    return;
+  }
+  lastInviteCode = code;
+  uni.setStorageSync(INVITE_CODE_KEY, code);
+  uni.reLaunch({ url: `/pages/invite/level?code=${encodeURIComponent(code)}` });
+}
+
+onLaunch(async (options) => {
+  consumeInviteCode(options);
   await themeStore.loadCurrent();
 });
 
-onShow(async () => {
+onShow(async (options) => {
+  consumeInviteCode(options);
   await themeStore.loadCurrent();
   const token = uni.getStorageSync("mall_app_token");
   if (!token) {

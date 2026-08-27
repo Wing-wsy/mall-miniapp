@@ -2,6 +2,7 @@
   <view class="page" v-if="order">
     <view class="status">
       <text class="status-text">{{ order.statusText }}</text>
+      <view v-if="order.refundReason" class="refund-reason">退款原因：{{ order.refundReason }}</view>
       <text v-if="payCountdown" class="countdown">剩余 {{ payCountdown }} 自动取消</text>
       <text v-if="recvCountdown" class="countdown">剩余 {{ recvCountdown }} 自动确认收货</text>
     </view>
@@ -61,6 +62,8 @@
     </view>
     <view class="card meta">
       <text>订单号 {{ order.orderNo }}</text>
+      <text v-if="order.refundReason">退款原因 {{ order.refundReason }}</text>
+      <text v-if="publicShipFrom(order)">{{ publicShipFrom(order) }}</text>
       <text v-if="order.buyerRemark">备注 {{ order.buyerRemark }}</text>
       <text v-if="order.cancelReason">取消原因 {{ order.cancelReason }}</text>
     </view>
@@ -80,6 +83,7 @@ import { computed, ref } from "vue";
 import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { cancelOrder, confirmOrder, fetchOrderDetail, prepayOrder, type OrderItemVO, type OrderVO } from "@/api/order";
 import { prefetchCoverUrls } from "@/utils/media";
+import { publicShipFrom } from "@/utils/supplier";
 
 const order = ref<OrderVO | null>(null);
 const error = ref("");
@@ -128,7 +132,7 @@ const showExpress = computed(() => {
 
 const showAfterSaleProgress = computed(() => {
   const s = order.value?.afterSaleStatus;
-  return !!order.value?.afterSaleId && [10, 20, 21, 30].includes(Number(s));
+  return !!order.value?.afterSaleId && [10, 20, 21, 30, 60].includes(Number(s));
 });
 
 onLoad((query) => {
@@ -137,11 +141,12 @@ onLoad((query) => {
 });
 
 onShow(() => {
+  if (orderId.value) {
+    load();
+    return;
+  }
   if (order.value?.status === 10 || (order.value?.status === 30 && order.value.autoConfirmTime)) {
     startTimer();
-  }
-  if (order.value && (order.value.status === 30 || order.value.status === 40) && order.value.expressNo) {
-    load();
   }
 });
 
@@ -354,6 +359,9 @@ function goAfterSale() {
   color: #9ca3af;
 }
 .status {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
   padding: 36rpx 28rpx 12rpx;
 }
 .status-text {
@@ -368,6 +376,12 @@ function goAfterSale() {
   font-size: 26rpx;
   font-weight: 400;
   color: #ff5a3d;
+}
+.refund-reason {
+  font-size: 26rpx;
+  font-weight: 400;
+  color: #ff5a3d;
+  line-height: 1.5;
 }
 .express {
   display: flex;

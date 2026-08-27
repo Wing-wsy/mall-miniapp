@@ -33,6 +33,7 @@
             <view v-else class="cover-fallback">
               <text>{{ (item.name || "").slice(0, 1) }}</text>
             </view>
+            <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
           </view>
           <view class="body">
             <text class="name">{{ item.name }}</text>
@@ -58,6 +59,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { searchProducts, type ProductCardVO } from "@/api/product";
 import { linePrice, salePrice } from "@/utils/price";
+import { publicShipFrom } from "@/utils/supplier";
 import { prefetchCoverUrls } from "@/utils/media";
 import { useThemeStore } from "@/stores/theme";
 
@@ -240,9 +242,25 @@ onLoad((query) => {
 }
 
 .cover-wrap {
+  position: relative;
   width: 100%;
   height: 340rpx;
   overflow: hidden;
+}
+
+.ship-badge {
+  position: absolute;
+  left: 8rpx;
+  top: 8rpx;
+  padding: 4rpx 10rpx;
+  font-size: 20rpx;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.55);
+  border-radius: 8rpx;
+}
+
+.ship-badge.self {
+  background: #ff5a3d;
 }
 
 .cover-img,

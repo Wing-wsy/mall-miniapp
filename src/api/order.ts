@@ -40,6 +40,8 @@ export interface OrderVO {
   status: number;
   statusText: string;
   orderType?: number;
+  supplierId?: number | null;
+  supplierName?: string;
   goodsAmount: number | string;
   freightAmount: number | string;
   couponAmount?: number | string;
@@ -77,6 +79,7 @@ export interface OrderVO {
   afterSaleId?: number;
   afterSaleStatus?: number;
   afterSaleStatusText?: string;
+  refundReason?: string;
   allowedAfterSaleTypes?: number[];
 }
 
@@ -101,6 +104,30 @@ export interface OrderPreviewVO {
   pointsAmount?: number;
   memberPoints?: number;
   canSubmit: boolean;
+  groups?: OrderPreviewGroupVO[];
+}
+
+export interface OrderPreviewGroupVO {
+  supplierId?: number | null;
+  supplierName?: string;
+  cartIds?: number[];
+  items?: OrderItemVO[];
+  goodsAmount?: number | string;
+  freightAmount?: number | string;
+  freightFree?: boolean;
+  freightHint?: string;
+  couponAmount?: number | string;
+  couponName?: string;
+  selectedCouponId?: number | null;
+  coupons?: CouponVO[];
+  payAmount?: number | string;
+  memberDiscountAmount?: number | string;
+  memberDiscountApplied?: boolean;
+  canSubmit?: boolean;
+}
+
+export interface OrderBatchVO {
+  orders: OrderVO[];
 }
 
 export interface OrderCountVO {
@@ -111,13 +138,26 @@ export interface OrderCountVO {
   afterSale?: number;
 }
 
-export function previewOrder(cartIds: number[], couponId?: number | null, addressId?: number | null) {
-  const data: { cartIds: number[]; couponId?: number; addressId?: number } = { cartIds };
+export function previewOrder(
+  cartIds: number[],
+  couponId?: number | null,
+  addressId?: number | null,
+  groupCoupons?: { supplierId?: number | null; couponId?: number | null }[]
+) {
+  const data: {
+    cartIds: number[];
+    couponId?: number;
+    addressId?: number;
+    groupCoupons?: { supplierId?: number | null; couponId?: number | null }[];
+  } = { cartIds };
   if (couponId != null) {
     data.couponId = couponId;
   }
   if (addressId) {
     data.addressId = addressId;
+  }
+  if (groupCoupons?.length) {
+    data.groupCoupons = groupCoupons;
   }
   return request<OrderPreviewVO>({
     url: "/api/app/order/preview",
@@ -126,8 +166,14 @@ export function previewOrder(cartIds: number[], couponId?: number | null, addres
   });
 }
 
-export function createOrder(data: { cartIds: number[]; addressId: number; remark?: string; couponId?: number | null }) {
-  return request<OrderVO>({
+export function createOrder(data: {
+  cartIds: number[];
+  addressId: number;
+  remark?: string;
+  couponId?: number | null;
+  groupCoupons?: { supplierId?: number | null; couponId?: number | null }[];
+}) {
+  return request<OrderBatchVO>({
     url: "/api/app/order",
     method: "POST",
     data,

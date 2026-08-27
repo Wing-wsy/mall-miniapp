@@ -19,9 +19,11 @@
           <text class="no">{{ order.orderNo }}</text>
           <text class="st">{{ order.statusText }}</text>
         </view>
+        <text v-if="publicShipFrom(order)" class="ship">{{ publicShipFrom(order) }}</text>
         <text v-if="order.afterSaleStatusText && [10, 20, 21, 30].includes(Number(order.afterSaleStatus))" class="as">
           售后 {{ order.afterSaleStatusText }}
         </text>
+        <view v-if="order.refundReason" class="refund">退款原因 {{ order.refundReason }}</view>
         <view v-for="item in order.items" :key="item.id" class="goods">
           <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
@@ -44,6 +46,7 @@ import { ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { fetchOrderList, type OrderVO } from "@/api/order";
 import { prefetchCoverUrls } from "@/utils/media";
+import { publicShipFrom } from "@/utils/supplier";
 
 const tabs = [
   { label: "全部", status: undefined as number | undefined },
@@ -168,11 +171,23 @@ function money(v: unknown) {
 .st {
   color: #ff5a3d;
 }
+.ship {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #6b7280;
+}
 .as {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
   color: #b45309;
+}
+.refund {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #6b7280;
 }
 .goods {
   display: flex;
