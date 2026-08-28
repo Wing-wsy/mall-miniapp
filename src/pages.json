@@ -5,7 +5,8 @@
       "style": {
         "navigationBarTitleText": "Mall精选",
         "navigationBarBackgroundColor": "#FFFFFF",
-        "navigationStyle": "custom"
+        "navigationStyle": "custom",
+        "enableShareAppMessage": true
       }
     },
     {
@@ -48,19 +49,22 @@
     {
       "path": "pages/goods/detail",
       "style": {
-        "navigationBarTitleText": "商品详情"
+        "navigationBarTitleText": "商品详情",
+        "enableShareAppMessage": true
       }
     },
     {
       "path": "pages/goods/list",
       "style": {
-        "navigationBarTitleText": "商品列表"
+        "navigationBarTitleText": "商品列表",
+        "enableShareAppMessage": true
       }
     },
     {
       "path": "pages/goods/search",
       "style": {
-        "navigationBarTitleText": "搜索"
+        "navigationBarTitleText": "搜索",
+        "enableShareAppMessage": true
       }
     },
     {
@@ -157,6 +161,19 @@
       "path": "pages/invite/level",
       "style": {
         "navigationBarTitleText": "开通会员"
+      }
+    },
+    {
+      "path": "pages/share/enter",
+      "style": {
+        "navigationBarTitleText": "分享"
+      }
+    },
+    {
+      "path": "pages/share/index",
+      "style": {
+        "navigationBarTitleText": "分享功能",
+        "enableShareAppMessage": true
       }
     },
     {

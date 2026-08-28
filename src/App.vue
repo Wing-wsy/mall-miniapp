@@ -5,7 +5,10 @@ import { fetchCartCount } from "@/api/cart";
 
 const themeStore = useThemeStore();
 const INVITE_CODE_KEY = "mall_level_invite_code";
+const SHARE_SC_KEY = "mall_share_sc";
+const SHARE_PID_KEY = "mall_share_pid";
 let lastInviteCode = "";
+let lastShareKey = "";
 
 function consumeInviteCode(options?: { path?: string; query?: Record<string, any> }) {
   const code = String(options?.query?.code || "").trim();
@@ -21,13 +24,43 @@ function consumeInviteCode(options?: { path?: string; query?: Record<string, any
   uni.reLaunch({ url: `/pages/invite/level?code=${encodeURIComponent(code)}` });
 }
 
+function consumeShare(options?: { path?: string; query?: Record<string, any> }) {
+  const sc = String(options?.query?.sc || "").trim();
+  if (!sc) {
+    return;
+  }
+  const pid = String(options?.query?.pid || "").trim();
+  const key = `${sc}|${pid}`;
+  if (key === lastShareKey) {
+    return;
+  }
+  const path = String(options?.path || "");
+  if (path.includes("pages/share/enter")) {
+    return;
+  }
+  lastShareKey = key;
+  uni.setStorageSync(SHARE_SC_KEY, sc);
+  if (pid) {
+    uni.setStorageSync(SHARE_PID_KEY, pid);
+  } else {
+    uni.removeStorageSync(SHARE_PID_KEY);
+  }
+  let url = `/pages/share/enter?sc=${encodeURIComponent(sc)}`;
+  if (pid) {
+    url += `&pid=${encodeURIComponent(pid)}`;
+  }
+  uni.reLaunch({ url });
+}
+
 onLaunch(async (options) => {
   consumeInviteCode(options);
+  consumeShare(options);
   await themeStore.loadCurrent();
 });
 
 onShow(async (options) => {
   consumeInviteCode(options);
+  consumeShare(options);
   await themeStore.loadCurrent();
   const token = uni.getStorageSync("mall_app_token");
   if (!token) {

@@ -34,6 +34,7 @@
               <text>{{ (item.name || "").slice(0, 1) }}</text>
             </view>
             <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
+            <product-share-btn :product-id="item.id" :visible="canShare" />
           </view>
           <view class="body">
             <text class="name">{{ item.name }}</text>
@@ -62,8 +63,11 @@ import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchCoverUrls } from "@/utils/media";
 import { useThemeStore } from "@/stores/theme";
+import ProductShareBtn from "@/components/product-share-btn.vue";
+import { useProductShare } from "@/composables/useProductShare";
 
 const themeStore = useThemeStore();
+const { canShare } = useProductShare();
 const keyword = ref("");
 const queried = ref("");
 const searched = ref(false);

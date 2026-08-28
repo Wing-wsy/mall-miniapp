@@ -109,6 +109,9 @@ const menus = computed(() => {
   if (showSupplier.value) {
     list.push({ name: "我的供应商", action: "supplier" });
   }
+  if (userStore.userInfo?.canShare) {
+    list.push({ name: "分享功能", action: "share" });
+  }
   list.push({ name: "联系客服", action: "contact" });
   return list;
 });
@@ -256,6 +259,14 @@ function onMenu(item: { name: string; action: string }) {
       return;
     }
     uni.navigateTo({ url: "/pages/supplier/list" });
+    return;
+  }
+  if (item.action === "share") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/share/index" });
     return;
   }
   if (item.action === "contact") {

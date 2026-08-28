@@ -10,6 +10,7 @@ export interface CartItemVO {
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;
+  sharePrice?: number | string | null;
   quantity: number;
   convertQty?: number;
   sellableQty?: number;

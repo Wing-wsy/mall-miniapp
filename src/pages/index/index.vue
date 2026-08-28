@@ -114,6 +114,7 @@
               <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
             </view>
             <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
+            <product-share-btn :product-id="item.id" :visible="canShare" />
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
@@ -149,6 +150,7 @@
               <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
             </view>
             <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
+            <product-share-btn :product-id="item.id" :visible="canShare" />
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
@@ -183,9 +185,12 @@ import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImage, prefetchImageField } from "@/utils/media";
+import ProductShareBtn from "@/components/product-share-btn.vue";
+import { useProductShare } from "@/composables/useProductShare";
 
 const themeStore = useThemeStore();
 const userStore = useUserStore();
+const { canShare } = useProductShare();
 const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
 const banners = ref<BannerVO[]>([]);

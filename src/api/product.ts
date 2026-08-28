@@ -7,6 +7,7 @@ export interface ProductSkuVO {
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;
+  sharePrice?: number | string | null;
   isBase?: number;
   convertQty?: number;
   sellableQty?: number;
@@ -21,6 +22,7 @@ export interface ProductDetailVO {
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;
+  sharePrice?: number | string | null;
   detailHtml?: string;
   detailImageUrls?: string[];
   categoryId?: number;
@@ -42,6 +44,7 @@ export interface ProductCardVO {
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;
+  sharePrice?: number | string | null;
   multiSpec?: boolean;
   selfOperated?: boolean;
   shipFromLabel?: string;

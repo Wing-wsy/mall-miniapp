@@ -10,6 +10,7 @@
               <text>{{ (item.name || "").slice(0, 1) }}</text>
             </view>
             <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
+            <product-share-btn :product-id="item.id" :visible="canShare" />
           </view>
         <view class="body">
           <text class="name">{{ item.name }}</text>
@@ -35,7 +36,10 @@ import {
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
+import ProductShareBtn from "@/components/product-share-btn.vue";
+import { useProductShare } from "@/composables/useProductShare";
 
+const { canShare } = useProductShare();
 const list = ref<ProductCardVO[]>([]);
 const loading = ref(false);
 

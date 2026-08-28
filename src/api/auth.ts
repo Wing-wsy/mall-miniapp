@@ -17,6 +17,12 @@ export interface MemberVO {
   points?: number;
   balance?: number | string | null;
   level?: MemberLevelVO | null;
+  canShare?: boolean;
+  shareActive?: boolean;
+  shareRate?: number | string | null;
+  shareRateMin?: number | string | null;
+  shareRateMax?: number | string | null;
+  shareCode?: string | null;
 }
 
 export interface LoginResult {

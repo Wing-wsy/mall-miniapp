@@ -1,20 +1,23 @@
 <template>
   <view class="page" v-if="product">
-    <swiper
-      v-if="gallery.length"
-      class="cover-swiper"
-      :indicator-dots="gallery.length > 1"
-      indicator-color="rgba(255,255,255,0.45)"
-      indicator-active-color="#ffffff"
-    >
-      <swiper-item v-for="(url, index) in gallery" :key="index">
-        <view class="cover-wrap" @click="preview(index)">
-          <image class="cover" :src="url" mode="aspectFill" />
-        </view>
-      </swiper-item>
-    </swiper>
-    <view v-else class="cover-fallback">
-      <text>{{ product.name }}</text>
+    <view class="cover-box">
+      <swiper
+        v-if="gallery.length"
+        class="cover-swiper"
+        :indicator-dots="gallery.length > 1"
+        indicator-color="rgba(255,255,255,0.45)"
+        indicator-active-color="#ffffff"
+      >
+        <swiper-item v-for="(url, index) in gallery" :key="index">
+          <view class="cover-wrap" @click="preview(index)">
+            <image class="cover" :src="url" mode="aspectFill" />
+          </view>
+        </swiper-item>
+      </swiper>
+      <view v-else class="cover-fallback">
+        <text>{{ product.name }}</text>
+      </view>
+      <product-share-btn :product-id="product.id" :visible="canShare" />
     </view>
     <view class="panel">
       <view class="price-row">
@@ -22,6 +25,12 @@
         <text v-if="displayLinePrice" class="origin">¥{{ displayLinePrice }}</text>
       </view>
       <text class="name">{{ product.name }}</text>
+      <view v-if="canShare" class="share-row">
+        <button class="share-chip" hover-class="none" open-type="share" :data-pid="String(product.id)">
+          分享给好友
+        </button>
+        <text class="share-chip ghost" @click="onCopyShare">复制链接</text>
+      </view>
       <text v-if="publicShipFrom(product)" class="ship-tag" :class="{ self: product.selfOperated }">
         {{ publicShipFrom(product) }}
       </text>
@@ -92,8 +101,12 @@ import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
+import ProductShareBtn from "@/components/product-share-btn.vue";
+import { useProductShare } from "@/composables/useProductShare";
+import { createShareLink } from "@/api/share";
 
 const userStore = useUserStore();
+const { canShare } = useProductShare();
 const product = ref<ProductDetailVO | null>(null);
 const selectedSkuId = ref<number | null>(null);
 const qty = ref(1);
@@ -325,6 +338,26 @@ function previewDetail(index: number) {
   uni.previewImage({ current: detailImages.value[index], urls: detailImages.value });
 }
 
+async function onCopyShare() {
+  if (!product.value?.id) {
+    return;
+  }
+  try {
+    const res = await createShareLink(product.value.id);
+    const text = res.data?.urlLink || res.data?.miniPath || "";
+    if (!text) {
+      uni.showToast({ title: "暂无链接", icon: "none" });
+      return;
+    }
+    uni.setClipboardData({
+      data: text,
+      success: () => uni.showToast({ title: "已复制", icon: "success" }),
+    });
+  } catch (e: unknown) {
+    uni.showToast({ title: e instanceof Error ? e.message : "复制失败", icon: "none" });
+  }
+}
+
 onLoad((query) => {
   const id = Number((query && query.id) || 0);
   const skuId = Number((query && query.skuId) || 0);
@@ -363,6 +396,10 @@ onLoad((query) => {
   min-height: 100vh;
   background: #f7f7f7;
   padding-bottom: 140rpx;
+}
+
+.cover-box {
+  position: relative;
 }
 
 .cover-swiper,
@@ -427,6 +464,34 @@ onLoad((query) => {
   font-size: 34rpx;
   font-weight: 700;
   color: #111827;
+}
+
+.share-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.share-chip {
+  margin: 0;
+  padding: 8rpx 24rpx;
+  height: auto;
+  min-height: 0;
+  line-height: 1.5;
+  font-size: 24rpx;
+  color: #fff;
+  background: #ff5a3d;
+  border-radius: 28rpx;
+}
+
+.share-chip::after {
+  border: none;
+}
+
+.share-chip.ghost {
+  color: #ff5a3d;
+  background: #fff1ed;
 }
 
 .ship-tag {
