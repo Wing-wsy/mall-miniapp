@@ -234,19 +234,50 @@ function stopTimer() {
 }
 
 function onPay() {
-  uni.showModal({
-    title: "模拟支付",
-    content: "第一期为模拟支付，确认后订单将变为待发货",
-    success: async (res) => {
-      if (!res.confirm || !order.value) {
-        return;
+  if (!order.value) {
+    return;
+  }
+  const doPay = async () => {
+    try {
+      const res = await prepayOrder(order.value!.id, "wechat");
+      const data = res.data;
+      if (!data) {
+        throw new Error("支付失败");
       }
-      try {
-        await prepayOrder(order.value.id, "mock");
+      if (data.status === "success") {
         uni.showToast({ title: "支付成功", icon: "success" });
         await load();
-      } catch (e: any) {
-        uni.showToast({ title: e?.message || "支付失败", icon: "none" });
+        return;
+      }
+      if (data.status === "pending" && data.clientParams) {
+        const p = data.clientParams;
+        await new Promise<void>((resolve, reject) => {
+          uni.requestPayment({
+            provider: "wxpay",
+            timeStamp: String(p.timeStamp || ""),
+            nonceStr: String(p.nonceStr || ""),
+            package: String(p.package || ""),
+            signType: String(p.signType || "RSA") as "RSA" | "MD5",
+            paySign: String(p.paySign || ""),
+            success: () => resolve(),
+            fail: (err) => reject(new Error(err?.errMsg || "支付取消")),
+          });
+        });
+        uni.showToast({ title: "支付成功", icon: "success" });
+        await load();
+        return;
+      }
+      throw new Error("暂不支持的支付结果");
+    } catch (e: any) {
+      uni.showToast({ title: e?.message || "支付失败", icon: "none" });
+    }
+  };
+  uni.showModal({
+    title: "确认支付",
+    content: "确认支付该订单？",
+    success: (res) => {
+      if (res.confirm) {
+        void doPay();
       }
     },
   });

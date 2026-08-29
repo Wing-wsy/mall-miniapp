@@ -1,7 +1,7 @@
 // WeChat treats 127.0.0.1 as an invalid upload URL (including large JSON POSTs).
 // export const BASE_URL = "http://127.0.0.1:9081";
-export const BASE_URL = "http://192.168.10.122:9081";
-// export const BASE_URL = "http://192.168.1.14:9081";
+// export const BASE_URL = "http://192.168.10.122:9081";
+export const BASE_URL = "http://192.168.1.14:9081";
 
 export interface ApiResult<T = unknown> {
   code: number;

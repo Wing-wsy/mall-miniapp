@@ -27,8 +27,14 @@
         </view>
         <view v-if="viewing && isLeaf(viewing)" class="list">
           <view class="list-item" @click="goList(viewing)">
-            <view class="thumb">
-              <text>{{ viewing.name.slice(0, 1) }}</text>
+            <view class="thumb" :class="{ 'has-icon': !!viewing.iconUrl }">
+              <image
+                v-if="viewing.iconUrl"
+                class="thumb-img"
+                :src="viewing.iconUrl"
+                mode="aspectFill"
+              />
+              <text v-else>{{ viewing.name.slice(0, 1) }}</text>
             </view>
             <text class="name">查看商品</text>
           </view>
@@ -40,8 +46,14 @@
             class="list-item"
             @click="onTapChild(item)"
           >
-            <view class="thumb">
-              <text>{{ item.name.slice(0, 1) }}</text>
+            <view class="thumb" :class="{ 'has-icon': !!item.iconUrl }">
+              <image
+                v-if="item.iconUrl"
+                class="thumb-img"
+                :src="item.iconUrl"
+                mode="aspectFill"
+              />
+              <text v-else>{{ item.name.slice(0, 1) }}</text>
             </view>
             <text class="name">{{ item.name }}</text>
           </view>
@@ -55,6 +67,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchProductCategoryTree, type CategoryNodeVO } from "@/api/category";
+import { prefetchImageField } from "@/utils/media";
 
 const categories = ref<CategoryNodeVO[]>([]);
 const active = ref(0);
@@ -73,11 +86,32 @@ function isLeaf(node?: CategoryNodeVO) {
   return !(node.children && node.children.length);
 }
 
+/** 一级不展示图标；二级及以下预拉取 iconUrl */
+async function prefetchChildIcons(nodes: CategoryNodeVO[]) {
+  const tasks: Promise<unknown>[] = [];
+  function walk(list: CategoryNodeVO[], depth: number) {
+    for (const node of list || []) {
+      if (depth >= 1) {
+        tasks.push(prefetchImageField(node, "iconUrl"));
+      }
+      if (node.children?.length) {
+        walk(node.children, depth + 1);
+      }
+    }
+  }
+  walk(nodes, 0);
+  if (tasks.length) {
+    await Promise.all(tasks);
+  }
+}
+
 async function load() {
   loading.value = true;
   try {
     const res = await fetchProductCategoryTree();
-    categories.value = res.data || [];
+    const tree = res.data || [];
+    await prefetchChildIcons(tree);
+    categories.value = tree;
     if (active.value >= categories.value.length) {
       active.value = 0;
     }
@@ -212,6 +246,17 @@ onShow(load);
   font-size: 32rpx;
   font-weight: 700;
   margin-bottom: 12rpx;
+  overflow: hidden;
+}
+
+.thumb.has-icon {
+  background: #f3f4f6;
+}
+
+.thumb-img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .name {

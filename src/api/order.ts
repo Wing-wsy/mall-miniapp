@@ -245,8 +245,14 @@ export function confirmOrder(id: number) {
   });
 }
 
-export function prepayOrder(orderId: number, channel = "mock") {
-  return request<{ orderId: number; channel: string; status: string; tradeNo?: string }>({
+export function prepayOrder(orderId: number, channel = "wechat") {
+  return request<{
+    orderId: number;
+    channel: string;
+    status: string;
+    tradeNo?: string;
+    clientParams?: Record<string, string>;
+  }>({
     url: "/api/app/pay/prepay",
     method: "POST",
     data: { orderId, channel },
