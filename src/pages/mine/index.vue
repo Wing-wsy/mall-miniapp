@@ -10,7 +10,7 @@
             <text v-if="levelName" class="level-badge">{{ levelName }}</text>
           </view>
           <text v-if="!userStore.isLogin" class="tip">登录后同步订单与专属价格</text>
-          <text v-if="userStore.isLogin" class="points">当前积分 {{ userStore.userInfo?.points ?? 0 }}</text>
+          <text v-if="userStore.isLogin && pointsEnabled === true" class="points">当前积分 {{ userStore.userInfo?.points ?? 0 }}</text>
           <text v-if="showBalance" class="points" @click.stop="goBalance">我的余额 ¥{{ balanceText }}</text>
           <text v-if="needPhone" class="bind" @click.stop="goLogin">授权手机号，解锁会员价</text>
         </view>
@@ -92,20 +92,37 @@ try {
 const showBalance = computed(() => userStore.isLogin && !!userStore.userInfo?.level);
 const balanceText = computed(() => Number(userStore.userInfo?.balance ?? 0).toFixed(2));
 
+const emptyCounts = { unpaid: 0, waitShip: 0, waitRecv: 0, done: 0 };
+const counts = ref({ ...emptyCounts });
+const contact = ref({ phone: "", email: "" });
+const contactVisible = ref(false);
+const showSupplier = ref(false);
+/** 店铺功能开关：未拉到配置前默认全关，避免闪一下再隐藏 */
+const voucherEnabled = ref(false);
+const pointsEnabled = ref(false);
+const couponEnabled = ref(false);
+let contactLoading = false;
+
 const menus = computed(() => {
   const list = [
     { name: "收货地址", action: "address" },
     { name: "我的订单", action: "orders" },
     { name: "退款/售后", action: "aftersale" },
-    { name: "我的优惠券", action: "coupons" },
-    { name: "领券中心", action: "couponActivity" },
-    { name: "积分商城", action: "pointsMall" },
-    { name: "积分明细", action: "pointLogs" },
   ];
+  if (couponEnabled.value === true) {
+    list.push({ name: "我的优惠券", action: "coupons" });
+    list.push({ name: "领券中心", action: "couponActivity" });
+  }
+  if (pointsEnabled.value === true) {
+    list.push({ name: "积分商城", action: "pointsMall" });
+    list.push({ name: "积分明细", action: "pointLogs" });
+  }
   if (showBalance.value) {
     list.push({ name: "我的余额", action: "balance" });
   }
-  list.push({ name: "礼品兑换", action: "voucher" });
+  if (voucherEnabled.value === true) {
+    list.push({ name: "礼品兑换", action: "voucher" });
+  }
   if (showSupplier.value) {
     list.push({ name: "我的供应商", action: "supplier" });
   }
@@ -116,12 +133,6 @@ const menus = computed(() => {
   return list;
 });
 
-const emptyCounts = { unpaid: 0, waitShip: 0, waitRecv: 0, done: 0 };
-const counts = ref({ ...emptyCounts });
-const contact = ref({ phone: "", email: "" });
-const contactVisible = ref(false);
-const showSupplier = ref(false);
-let contactLoading = false;
 const displayName = computed(() =>
   userStore.isLogin ? userStore.userInfo?.nickname || "微信用户" : "点击登录"
 );
@@ -210,6 +221,10 @@ function onMenu(item: { name: string; action: string }) {
     return;
   }
   if (item.action === "coupons") {
+    if (!couponEnabled.value) {
+      uni.showToast({ title: "优惠券功能暂未开放", icon: "none" });
+      return;
+    }
     if (!userStore.isLogin) {
       goLogin();
       return;
@@ -218,6 +233,10 @@ function onMenu(item: { name: string; action: string }) {
     return;
   }
   if (item.action === "couponActivity") {
+    if (!couponEnabled.value) {
+      uni.showToast({ title: "优惠券功能暂未开放", icon: "none" });
+      return;
+    }
     if (!userStore.isLogin) {
       goLogin();
       return;
@@ -226,6 +245,10 @@ function onMenu(item: { name: string; action: string }) {
     return;
   }
   if (item.action === "pointsMall") {
+    if (!pointsEnabled.value) {
+      uni.showToast({ title: "积分功能暂未开放", icon: "none" });
+      return;
+    }
     if (!userStore.isLogin) {
       goLogin();
       return;
@@ -234,6 +257,10 @@ function onMenu(item: { name: string; action: string }) {
     return;
   }
   if (item.action === "pointLogs") {
+    if (!pointsEnabled.value) {
+      uni.showToast({ title: "积分功能暂未开放", icon: "none" });
+      return;
+    }
     if (!userStore.isLogin) {
       goLogin();
       return;
@@ -246,6 +273,10 @@ function onMenu(item: { name: string; action: string }) {
     return;
   }
   if (item.action === "voucher") {
+    if (!voucherEnabled.value) {
+      uni.showToast({ title: "兑换功能暂未开放", icon: "none" });
+      return;
+    }
     if (!userStore.isLogin) {
       goLogin();
       return;
@@ -296,8 +327,13 @@ async function loadContact() {
       phone: res.data?.phone || "",
       email: res.data?.email || "",
     };
+    voucherEnabled.value = res.data?.voucherEnabled === true;
+    pointsEnabled.value = res.data?.pointsEnabled === true;
+    couponEnabled.value = res.data?.couponEnabled === true;
   } catch {
-    // keep last known values
+    voucherEnabled.value = false;
+    pointsEnabled.value = false;
+    couponEnabled.value = false;
   }
 }
 

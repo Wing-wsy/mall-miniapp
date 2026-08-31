@@ -21,12 +21,33 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { previewVoucher } from "@/api/voucher";
+import { fetchShopContact } from "@/api/shop";
 
 const userStore = useUserStore();
 const code = ref("");
 const submitting = ref(false);
+
+onShow(() => {
+  assertVoucherOpen();
+});
+
+async function assertVoucherOpen() {
+  try {
+    const res = await fetchShopContact();
+    if (res.data?.voucherEnabled) {
+      return;
+    }
+  } catch {
+    // treat as closed when config unavailable
+  }
+  uni.showToast({ title: "兑换功能暂未开放", icon: "none" });
+  setTimeout(() => {
+    uni.navigateBack({ fail: () => uni.switchTab({ url: "/pages/mine/index" }) });
+  }, 400);
+}
 
 async function onPreview() {
   const raw = code.value.trim();

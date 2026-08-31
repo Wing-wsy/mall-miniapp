@@ -23,6 +23,7 @@
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchPointLogs, type PointLogVO } from "@/api/point";
+import { assertPointsOpen } from "@/utils/featureGate";
 
 const list = ref<PointLogVO[]>([]);
 const loading = ref(false);
@@ -32,6 +33,9 @@ onShow(() => {
 });
 
 async function load() {
+  if (!(await assertPointsOpen())) {
+    return;
+  }
   loading.value = true;
   try {
     const res = await fetchPointLogs();

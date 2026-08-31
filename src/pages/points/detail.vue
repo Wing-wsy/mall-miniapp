@@ -77,6 +77,7 @@ import { fetchPointProductDetail } from "@/api/point";
 import type { ProductDetailVO, ProductSkuVO } from "@/api/product";
 import { useUserStore } from "@/stores/user";
 import { prefetchImageField } from "@/utils/media";
+import { assertPointsOpen } from "@/utils/featureGate";
 
 const userStore = useUserStore();
 const product = ref<ProductDetailVO | null>(null);
@@ -148,7 +149,10 @@ function onRedeem() {
   });
 }
 
-onLoad((query) => {
+onLoad(async (query) => {
+  if (!(await assertPointsOpen())) {
+    return;
+  }
   const id = Number((query && query.id) || 0);
   if (!id) {
     error.value = "商品不存在";

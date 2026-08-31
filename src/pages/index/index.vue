@@ -205,6 +205,9 @@ let catalogSeq = 0;
 const entries = ref<NavEntryVO[]>([]);
 const claimable = ref<CouponActivityVO[]>([]);
 const notice = ref("");
+const voucherEnabled = ref(false);
+const pointsEnabled = ref(false);
+const couponEnabled = ref(false);
 
 const claimEntry = computed(() => claimable.value[0] || null);
 const claimCount = computed(() => claimable.value.length);
@@ -307,6 +310,10 @@ function goPage(path: string) {
 }
 
 function goCouponCenter() {
+  if (!couponEnabled.value) {
+    uni.showToast({ title: "优惠券功能暂未开放", icon: "none" });
+    return;
+  }
   if (!userStore.isLogin) {
     uni.navigateTo({ url: "/pages/login/index" });
     return;
@@ -347,6 +354,27 @@ function onEntry(item: NavEntryVO) {
   if (item.linkType === "page") {
     if (!value.startsWith("/pages/")) {
       toast("页面不存在");
+      return;
+    }
+    if (value.split("?")[0] === "/pages/voucher/redeem" && !voucherEnabled.value) {
+      uni.showToast({ title: "兑换功能暂未开放", icon: "none" });
+      return;
+    }
+    const pagePath = value.split("?")[0];
+    if (
+      (pagePath === "/pages/points/list" ||
+        pagePath === "/pages/points/detail" ||
+        pagePath === "/pages/points/logs") &&
+      !pointsEnabled.value
+    ) {
+      uni.showToast({ title: "积分功能暂未开放", icon: "none" });
+      return;
+    }
+    if (
+      (pagePath === "/pages/coupon/list" || pagePath === "/pages/coupon/activity") &&
+      !couponEnabled.value
+    ) {
+      uni.showToast({ title: "优惠券功能暂未开放", icon: "none" });
       return;
     }
     goPage(value);
@@ -435,7 +463,7 @@ async function loadNavEntries() {
 }
 
 async function loadClaimable() {
-  if (!userStore.isLogin) {
+  if (!couponEnabled.value || !userStore.isLogin) {
     claimable.value = [];
     return;
   }
@@ -451,8 +479,14 @@ async function loadNotice() {
   try {
     const res = await fetchShopContact();
     notice.value = (res.data?.notice || "").trim();
+    voucherEnabled.value = res.data?.voucherEnabled === true;
+    pointsEnabled.value = res.data?.pointsEnabled === true;
+    couponEnabled.value = res.data?.couponEnabled === true;
   } catch {
     notice.value = "";
+    voucherEnabled.value = false;
+    pointsEnabled.value = false;
+    couponEnabled.value = false;
   }
 }
 
@@ -470,8 +504,8 @@ onShow(async () => {
   loadNavEntries();
   loadHot();
   loadCatalog(true);
+  await loadNotice();
   loadClaimable();
-  loadNotice();
 });
 </script>
 

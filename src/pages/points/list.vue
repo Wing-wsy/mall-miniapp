@@ -27,11 +27,15 @@ import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchPointProducts, type PointProductCardVO } from "@/api/point";
 import { prefetchCoverUrls } from "@/utils/media";
+import { assertPointsOpen } from "@/utils/featureGate";
 
 const list = ref<PointProductCardVO[]>([]);
 const loading = ref(false);
 
 async function load() {
+  if (!(await assertPointsOpen())) {
+    return;
+  }
   loading.value = true;
   try {
     const res = await fetchPointProducts();

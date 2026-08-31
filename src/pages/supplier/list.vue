@@ -6,17 +6,19 @@
         <text class="card-title">后台登录信息</text>
         <view class="row">
           <text class="label">登录地址</text>
-          <text class="value">{{ home.loginUrl }}</text>
+          <text class="value">{{ home.loginUrl || "—" }}</text>
+          <text class="copy" @click="copyField(home.loginUrl, '登录地址')">复制</text>
         </view>
         <view class="row">
           <text class="label">账号</text>
-          <text class="value">{{ home.username }}</text>
+          <text class="value">{{ home.username || "—" }}</text>
+          <text class="copy" @click="copyField(home.username, '账号')">复制</text>
         </view>
         <view class="row">
           <text class="label">密码</text>
-          <text class="value">{{ home.password || "—" }}</text>
+          <text class="value">{{ maskedPassword }}</text>
+          <text class="copy" @click="copyField(home.password, '密码')">复制</text>
         </view>
-        <button class="copy-btn" @click="copyLogin">复制登录地址</button>
       </view>
 
       <view class="hint">
@@ -62,6 +64,7 @@ const maxPerMember = computed(() => {
 });
 const usedCount = computed(() => Number(home.value?.usedCount || 0));
 const remainCount = computed(() => Math.max(0, maxPerMember.value - usedCount.value));
+const maskedPassword = computed(() => maskMiddle(home.value?.password || ""));
 
 onShow(() => {
   if (!userStore.isLogin) {
@@ -133,13 +136,27 @@ function onDelete(item: AppSupplierVO) {
   });
 }
 
-function copyLogin() {
-  const url = home.value?.loginUrl || "";
-  if (!url) {
-    uni.showToast({ title: "暂无登录地址", icon: "none" });
+function maskMiddle(raw: string) {
+  const text = String(raw || "").trim();
+  if (!text) {
+    return "—";
+  }
+  if (text.length <= 4) {
+    return `${text[0]}****${text[text.length - 1]}`;
+  }
+  if (text.length <= 8) {
+    return `${text.slice(0, 2)}****${text.slice(-2)}`;
+  }
+  return `${text.slice(0, 3)}****${text.slice(-3)}`;
+}
+
+function copyField(value: string | undefined, label: string) {
+  const data = String(value || "").trim();
+  if (!data) {
+    uni.showToast({ title: `暂无${label}`, icon: "none" });
     return;
   }
-  uni.setClipboardData({ data: url });
+  uni.setClipboardData({ data });
 }
 </script>
 
@@ -174,6 +191,7 @@ function copyLogin() {
 }
 .row {
   display: flex;
+  align-items: flex-start;
   gap: 16rpx;
   padding: 8rpx 0;
   font-size: 26rpx;
@@ -181,20 +199,18 @@ function copyLogin() {
 .label {
   color: #9ca3af;
   width: 140rpx;
+  flex-shrink: 0;
 }
 .value {
   flex: 1;
   color: #111827;
   word-break: break-all;
 }
-.copy-btn {
-  margin-top: 16rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  border-radius: 36rpx;
-  background: #fff1ed;
+.copy {
+  flex-shrink: 0;
   color: #ff5a3d;
   font-size: 26rpx;
+  padding: 0 4rpx;
 }
 .top {
   display: flex;

@@ -191,6 +191,7 @@ import {
 } from "@/api/order";
 import { previewVoucher, redeemVoucher } from "@/api/voucher";
 import { fetchCartCount } from "@/api/cart";
+import { fetchShopContact } from "@/api/shop";
 import type { CouponVO } from "@/api/coupon";
 import { prefetchCoverUrls } from "@/utils/media";
 import { publicShipFrom } from "@/utils/supplier";
@@ -284,6 +285,33 @@ async function loadPreview(silent = false) {
   } else if (isVoucher.value) {
     if (!voucherCode.value) {
       uni.showToast({ title: "请先输入验证码", icon: "none" });
+      return;
+    }
+    try {
+      const shop = await fetchShopContact();
+      if (!shop.data?.voucherEnabled) {
+        uni.showToast({ title: "兑换功能暂未开放", icon: "none" });
+        setTimeout(() => {
+          uni.navigateBack({ fail: () => uni.switchTab({ url: "/pages/mine/index" }) });
+        }, 400);
+        return;
+      }
+    } catch {
+      uni.showToast({ title: "兑换功能暂未开放", icon: "none" });
+      return;
+    }
+  } else if (isPoints.value) {
+    try {
+      const shop = await fetchShopContact();
+      if (!shop.data?.pointsEnabled) {
+        uni.showToast({ title: "积分功能暂未开放", icon: "none" });
+        setTimeout(() => {
+          uni.navigateBack({ fail: () => uni.switchTab({ url: "/pages/mine/index" }) });
+        }, 400);
+        return;
+      }
+    } catch {
+      uni.showToast({ title: "积分功能暂未开放", icon: "none" });
       return;
     }
   } else if (!cartIds.value.length) {

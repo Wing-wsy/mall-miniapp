@@ -32,6 +32,7 @@
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchMyCoupons, type CouponVO } from "@/api/coupon";
+import { assertCouponOpen } from "@/utils/featureGate";
 
 const tabs = [
   { label: "未使用", status: 0 as number | undefined },
@@ -53,6 +54,9 @@ function switchTab(status?: number) {
 }
 
 async function load() {
+  if (!(await assertCouponOpen())) {
+    return;
+  }
   loading.value = true;
   try {
     const res = await fetchMyCoupons(current.value);

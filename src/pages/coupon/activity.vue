@@ -27,12 +27,16 @@ import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { claimCoupon, fetchCouponActivities, type CouponActivityVO } from "@/api/coupon";
+import { assertCouponOpen } from "@/utils/featureGate";
 
 const userStore = useUserStore();
 const list = ref<CouponActivityVO[]>([]);
 const loading = ref(false);
 
-onShow(() => {
+onShow(async () => {
+  if (!(await assertCouponOpen())) {
+    return;
+  }
   if (!userStore.isLogin) {
     uni.navigateTo({ url: "/pages/login/index" });
     return;
