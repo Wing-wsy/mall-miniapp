@@ -55,9 +55,20 @@ export function request<T = unknown>(options: UniApp.RequestOptions) {
       success: (res) => {
         const body = res.data as ApiResult<T>;
         if (body && typeof body.code === "number" && body.code !== 0) {
-          if (body.code === 401) {
+          if (body.code === 401 || body.code === 403) {
             uni.removeStorageSync("mall_app_token");
             uni.removeStorageSync("mall_app_user");
+            if (body.code === 403) {
+              const msg = body.message || "账号已被限制，无法使用小程序";
+              uni.showToast({ title: msg, icon: "none" });
+              const pages = getCurrentPages();
+              const cur = pages.length ? pages[pages.length - 1]?.route || "" : "";
+              if (!cur.includes("pages/login/index")) {
+                setTimeout(() => {
+                  uni.navigateTo({ url: "/pages/login/index" });
+                }, 400);
+              }
+            }
           }
           reject(new ApiError(body.code, body.message || "请求失败"));
           return;
