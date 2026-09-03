@@ -8,12 +8,27 @@
           v-model="keyword"
           :placeholder="placeholder"
           confirm-type="search"
-          :focus="true"
+          :focus="autoFocus"
           maxlength="32"
-          @confirm="onConfirm"
+          @confirm="onSearch"
         />
       </view>
       <text class="search-btn" @click="onSearch">搜索</text>
+    </view>
+
+    <view v-if="showHistory" class="history">
+      <view class="history-head">
+        <text class="history-title">最近搜索</text>
+        <text class="history-clear" @click="onClearHistory">清空</text>
+      </view>
+      <view class="history-tags">
+        <text
+          v-for="item in history"
+          :key="item"
+          class="history-tag"
+          @click="onHistoryTap(item)"
+        >{{ item }}</text>
+      </view>
     </view>
 
     <scroll-view
@@ -56,8 +71,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { computed, ref, watch } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { searchProducts, type ProductCardVO } from "@/api/product";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
@@ -66,16 +81,79 @@ import { useThemeStore } from "@/stores/theme";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 
+const HISTORY_KEY = "mall_search_history";
+const HISTORY_MAX = 3;
+
+function normalizeHistory(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  const out: string[] = [];
+  for (const x of list) {
+    const s = String(x ?? "").trim();
+    if (s) out.push(s);
+    if (out.length >= HISTORY_MAX) break;
+  }
+  return out;
+}
+
+function getSearchHistory(): string[] {
+  try {
+    const raw = uni.getStorageSync(HISTORY_KEY);
+    if (raw == null || raw === "") return [];
+    if (Array.isArray(raw)) return normalizeHistory(raw);
+    if (typeof raw === "string") {
+      const text = raw.trim();
+      if (!text) return [];
+      if (text.startsWith("[")) {
+        try {
+          return normalizeHistory(JSON.parse(text));
+        } catch {
+          return [];
+        }
+      }
+      return [text];
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function pushSearchHistory(keyword: string): string[] {
+  const kw = String(keyword || "").trim();
+  if (!kw) return getSearchHistory();
+  const next = [kw, ...getSearchHistory().filter((x) => x !== kw)].slice(0, HISTORY_MAX);
+  try {
+    uni.setStorageSync(HISTORY_KEY, next);
+  } catch {
+    try {
+      uni.setStorageSync(HISTORY_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+  return next;
+}
+
+function clearSearchHistory() {
+  try {
+    uni.removeStorageSync(HISTORY_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 const themeStore = useThemeStore();
 const { canShare } = useProductShare();
 const keyword = ref("");
 const queried = ref("");
 const searched = ref(false);
+const history = ref<string[]>([]);
 const list = ref<ProductCardVO[]>([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const hasMore = ref(false);
 const page = ref(0);
+const autoFocus = ref(true);
 const PAGE_SIZE = 10;
 let seq = 0;
 const scrollHeight = ref("70vh");
@@ -84,6 +162,8 @@ const placeholder = computed(
   () => themeStore.searchPlaceholder || "请搜索你想要的礼品名称、品牌或型号"
 );
 
+const showHistory = computed(() => !searched.value && history.value.length > 0);
+
 try {
   const info = uni.getSystemInfoSync();
   scrollHeight.value = `${Math.max((info.windowHeight || 600) - 56, 320)}px`;
@@ -91,21 +171,54 @@ try {
   // ignore
 }
 
-function onConfirm(e: { detail?: { value?: string } }) {
-  if (e.detail?.value != null) {
-    keyword.value = e.detail.value;
+function refreshHistory() {
+  try {
+    history.value = getSearchHistory();
+  } catch {
+    history.value = [];
   }
+}
+
+function resetToIdle() {
+  searched.value = false;
+  queried.value = "";
+  list.value = [];
+  hasMore.value = false;
+  page.value = 0;
+  loading.value = false;
+  loadingMore.value = false;
+  refreshHistory();
+}
+
+watch(keyword, (val) => {
+  if (!String(val || "").trim() && searched.value) {
+    resetToIdle();
+  }
+});
+
+function onHistoryTap(item: string) {
+  keyword.value = item;
   onSearch();
 }
 
+function onClearHistory() {
+  clearSearchHistory();
+  history.value = [];
+}
+
 function onSearch() {
-  const kw = keyword.value.trim();
+  const kw = String(keyword.value || "").trim();
   if (!kw) {
     uni.showToast({ title: "请输入关键词", icon: "none" });
     return;
   }
   queried.value = kw;
   searched.value = true;
+  try {
+    history.value = pushSearchHistory(kw);
+  } catch {
+    // ignore storage errors
+  }
   load(true);
 }
 
@@ -166,13 +279,29 @@ function goDetail(id: number) {
 }
 
 onLoad((query) => {
-  const kw = query?.keyword ? decodeURIComponent(String(query.keyword)) : "";
+  refreshHistory();
+  const raw = query && query.keyword != null ? String(query.keyword) : "";
+  let kw = "";
+  try {
+    kw = raw ? decodeURIComponent(raw) : "";
+  } catch {
+    kw = raw;
+  }
   if (kw) {
     keyword.value = kw;
     queried.value = kw;
     searched.value = true;
+    try {
+      history.value = pushSearchHistory(kw);
+    } catch {
+      // ignore
+    }
     load(true);
   }
+});
+
+onShow(() => {
+  refreshHistory();
 });
 </script>
 
@@ -228,6 +357,48 @@ onLoad((query) => {
   text-align: center;
   color: #9ca3af;
   font-size: 26rpx;
+}
+
+.history {
+  padding: 28rpx 24rpx 20rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.history-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.history-clear {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.history-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.history-tag {
+  max-width: 100%;
+  padding: 12rpx 24rpx;
+  border-radius: 999rpx;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 24rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .goods-grid {
