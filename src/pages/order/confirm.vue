@@ -24,11 +24,14 @@
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 2) }}</view>
           <view class="info">
             <text class="gname">{{ item.productName }}</text>
-            <text class="spec">{{ item.specName }}</text>
+            <text class="spec">{{ item.itemType === 2 ? "礼盒" : item.specName }}</text>
+            <text v-if="item.itemType === 2 && item.components?.length" class="spec">
+              含 {{ item.components.map((c) => `${c.productName}×${c.quantity}`).join("、") }}
+            </text>
             <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
             <view class="row">
               <text class="price">¥{{ money(item.price) }}</text>
-              <text class="qty">x{{ item.quantity }}</text>
+              <text class="qty">x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
             </view>
           </view>
         </view>
@@ -349,7 +352,10 @@ async function loadPreview(silent = false) {
         couponBySupplier.value[key] = Number(g.selectedCouponId);
       }
     }
-    await prefetchCoverUrls(items.value);
+    await prefetchCoverUrls([
+      ...items.value,
+      ...groups.value.flatMap((g) => g.items || []),
+    ]);
     goodsAmount.value = money(res.data?.goodsAmount);
     freightAmount.value = money(res.data?.freightAmount);
     freightFree.value = !!res.data?.freightFree;
@@ -388,6 +394,12 @@ function goAddress() {
 }
 
 function goGoods(item: OrderItemVO) {
+  if (item.comboId || item.itemType === 2) {
+    if (item.comboId) {
+      uni.navigateTo({ url: `/pages/combo/detail?id=${item.comboId}` });
+    }
+    return;
+  }
   if (!item.productId) {
     return;
   }

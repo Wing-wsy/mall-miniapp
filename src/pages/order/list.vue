@@ -29,12 +29,18 @@
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
           <view class="info">
             <text class="name">{{ item.productName }}</text>
-            <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
+            <text class="spec">
+              {{ item.itemType === 2 ? "礼盒" : item.specName }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}
+            </text>
           </view>
           <text class="price">{{ priceText(order, item) }}</text>
         </view>
         <view class="foot">
-          <text>{{ totalText(order) }}</text>
+          <view class="foot-actions" @click.stop>
+            <button v-if="order.canReview" class="btn" @click="goReview(order.id)">评价</button>
+            <button v-else-if="order.reviewed" class="btn ghost" @click="goReview(order.id)">已评价</button>
+          </view>
+          <text class="foot-total">{{ totalText(order) }}</text>
         </view>
       </view>
     </view>
@@ -90,6 +96,10 @@ async function load() {
 
 function goDetail(id: number) {
   uni.navigateTo({ url: `/pages/order/detail?id=${id}` });
+}
+
+function goReview(id: number) {
+  uni.navigateTo({ url: `/pages/order/review?id=${id}` });
 }
 
 function isPointsOrder(order: OrderVO) {
@@ -161,12 +171,56 @@ function money(v: unknown) {
   padding: 24rpx;
   margin-bottom: 20rpx;
 }
-.head,
-.foot {
+.head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 24rpx;
   color: #6b7280;
+}
+.foot {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8rpx;
+  border-top: 1rpx solid #f3f4f6;
+  padding-top: 16rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #111827;
+}
+.foot-actions {
+  flex: 0 0 auto;
+  margin-right: 24rpx;
+}
+.foot-total {
+  flex: 0 0 auto;
+  text-align: right;
+  font-weight: 700;
+  color: #111827;
+}
+.btn {
+  width: auto !important;
+  min-width: 120rpx;
+  margin: 0;
+  padding: 0 28rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  font-weight: 400;
+  color: #fff;
+  background: #ff5a3d;
+  border-radius: 28rpx;
+}
+.btn::after {
+  border: none;
+}
+.btn.ghost {
+  color: #6b7280;
+  background: #f3f4f6;
 }
 .st {
   color: #ff5a3d;
@@ -224,13 +278,6 @@ function money(v: unknown) {
 }
 .price {
   font-size: 26rpx;
-  color: #111827;
-}
-.foot {
-  border-top: 1rpx solid #f3f4f6;
-  padding-top: 16rpx;
-  justify-content: flex-end;
-  font-weight: 700;
   color: #111827;
 }
 </style>

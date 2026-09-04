@@ -98,6 +98,12 @@
       }
     },
     {
+      "path": "pages/order/review",
+      "style": {
+        "navigationBarTitleText": "订单评价"
+      }
+    },
+    {
       "path": "pages/aftersale/list",
       "style": {
         "navigationBarTitleText": "退款/售后"
@@ -131,6 +137,18 @@
       "path": "pages/points/list",
       "style": {
         "navigationBarTitleText": "积分商城"
+      }
+    },
+    {
+      "path": "pages/combo/list",
+      "style": {
+        "navigationBarTitleText": "组合套装"
+      }
+    },
+    {
+      "path": "pages/combo/detail",
+      "style": {
+        "navigationBarTitleText": "套装详情"
       }
     },
     {

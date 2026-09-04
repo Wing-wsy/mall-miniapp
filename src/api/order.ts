@@ -4,8 +4,10 @@ import type { CouponVO } from "@/api/coupon";
 
 export interface OrderItemVO {
   id: number;
-  productId: number;
-  skuId: number;
+  itemType?: number;
+  comboId?: number;
+  productId?: number;
+  skuId?: number;
   productName: string;
   coverUrl?: string;
   specName?: string;
@@ -14,6 +16,7 @@ export interface OrderItemVO {
   convertQty?: number;
   amount: number | string;
   points?: number;
+  components?: { productName: string; specName?: string; quantity: number }[];
   invalidReason?: string;
 }
 
@@ -81,6 +84,19 @@ export interface OrderVO {
   afterSaleStatusText?: string;
   refundReason?: string;
   allowedAfterSaleTypes?: number[];
+  canReview?: boolean;
+  reviewed?: boolean;
+  reviewId?: number;
+}
+
+export interface OrderReviewVO {
+  id?: number;
+  orderId?: number;
+  orderNo?: string;
+  rating?: number;
+  content?: string;
+  images?: string[];
+  createTime?: string;
 }
 
 export interface OrderPreviewVO {
@@ -242,6 +258,21 @@ export function confirmOrder(id: number) {
   return request<OrderVO>({
     url: `/api/app/order/${id}/confirm`,
     method: "POST",
+  });
+}
+
+export function submitOrderReview(id: number, data: { rating: number; content?: string; images?: string[] }) {
+  return request<OrderReviewVO>({
+    url: `/api/app/order/${id}/review`,
+    method: "POST",
+    data,
+  });
+}
+
+export function fetchOrderReview(id: number) {
+  return request<OrderReviewVO | null>({
+    url: `/api/app/order/${id}/review`,
+    method: "GET",
   });
 }
 

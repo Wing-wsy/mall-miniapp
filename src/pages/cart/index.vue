@@ -31,7 +31,10 @@
         </view>
         <view class="info">
           <text class="name">{{ item.productName }}</text>
-          <text class="spec">{{ item.specName }}</text>
+          <text class="spec">{{ item.itemType === 2 ? "礼盒" : item.specName }}</text>
+          <text v-if="item.itemType === 2 && item.components?.length" class="spec">
+            含 {{ item.components.map((c) => c.productName).join("、") }}
+          </text>
           <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
           <view class="bottom">
             <text class="price">¥{{ salePrice(item) }}</text>
@@ -234,6 +237,14 @@ function checkout() {
 }
 
 function goDetail(item: CartItemVO) {
+  if (item.comboId || item.itemType === 2) {
+    if (!item.comboId) {
+      toast("套装不存在");
+      return;
+    }
+    uni.navigateTo({ url: `/pages/combo/detail?id=${item.comboId}` });
+    return;
+  }
   if (!item.productId) {
     toast("商品不存在");
     return;

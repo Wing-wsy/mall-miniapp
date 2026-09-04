@@ -55,9 +55,21 @@ export const useUserStore = defineStore("user", () => {
     return data;
   }
 
-  /** 开发工具/mock：无微信 code 时用本地假 code */
-  async function loginWithMockCode() {
-    const code = `dev_${Date.now()}`;
+  /**
+   * 开发工具/mock：无微信 code 时用本地假 code。
+   * 同一 stableKey（如测试手机号）必须稳定，否则每次退出后再登都会新建 openid 空壳。
+   */
+  async function loginWithMockCode(stableKey?: string) {
+    let code: string;
+    if (stableKey?.trim()) {
+      code = `dev_${stableKey.trim()}`;
+    } else {
+      code = String(uni.getStorageSync("mall_mock_dev_id") || "");
+      if (!code) {
+        code = `dev_${Date.now()}`;
+        uni.setStorageSync("mall_mock_dev_id", code);
+      }
+    }
     const { data } = await loginByCode(code);
     setToken(data.token);
     setUserInfo(data.userInfo);

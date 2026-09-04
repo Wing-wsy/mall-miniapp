@@ -108,7 +108,8 @@ async function onMockEnter() {
       await userStore.bindWxPhone({ phone });
     } else {
       await userStore.logout();
-      await userStore.loginWithMockCode();
+      // 同一测试手机号用稳定 mock code，避免退出后再登新建空壳账号
+      await userStore.loginWithMockCode(phone);
       await userStore.bindWxPhone({ phone });
     }
     uni.showToast({ title: userStore.userInfo?.level ? "已匹配会员等级" : "登录成功", icon: "success" });

@@ -27,7 +27,10 @@
         <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
         <view class="info">
           <text class="gname">{{ item.productName }}</text>
-          <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
+          <text class="spec">{{ item.itemType === 2 ? "礼盒" : item.specName }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
+          <text v-if="item.itemType === 2 && item.components?.length" class="spec">
+            含 {{ item.components.map((c) => `${c.productName}×${c.quantity}`).join("、") }}
+          </text>
         </view>
         <text class="price">{{ isPoints ? `${item.points || 0} 积分` : isVoucher ? "兑换券" : `¥${money(item.amount)}` }}</text>
       </view>
@@ -67,10 +70,12 @@
       <text v-if="order.buyerRemark">备注 {{ order.buyerRemark }}</text>
       <text v-if="order.cancelReason">取消原因 {{ order.cancelReason }}</text>
     </view>
-    <view v-if="order.canPay || order.canCancel || order.canConfirm || order.canAfterSale || showAfterSaleProgress" class="footer">
+    <view v-if="order.canPay || order.canCancel || order.canConfirm || order.canAfterSale || order.canReview || order.reviewed || showAfterSaleProgress" class="footer">
       <button v-if="order.canCancel" class="ghost" @click="onCancel">取消订单</button>
       <button v-if="showAfterSaleProgress" class="ghost" @click="goAfterSale">售后进度</button>
       <button v-else-if="order.canAfterSale" class="ghost" @click="goApply">申请售后</button>
+      <button v-if="order.canReview" class="ghost" @click="goReview">去评价</button>
+      <button v-else-if="order.reviewed" class="ghost" @click="goReview">查看评价</button>
       <button v-if="order.canConfirm" class="primary" @click="onConfirm">确认收货</button>
       <button v-if="order.canPay" class="primary" @click="onPay">立即支付</button>
     </view>
@@ -340,6 +345,12 @@ function formatTime(t?: string) {
 }
 
 function goGoods(item: OrderItemVO) {
+  if (item.comboId || item.itemType === 2) {
+    if (item.comboId) {
+      uni.navigateTo({ url: `/pages/combo/detail?id=${item.comboId}` });
+    }
+    return;
+  }
   if (!item.productId) {
     return;
   }
@@ -368,6 +379,13 @@ function goApply() {
     return;
   }
   uni.navigateTo({ url: `/pages/aftersale/apply?id=${order.value.id}` });
+}
+
+function goReview() {
+  if (!order.value?.id) {
+    return;
+  }
+  uni.navigateTo({ url: `/pages/order/review?id=${order.value.id}` });
 }
 
 function goAfterSale() {

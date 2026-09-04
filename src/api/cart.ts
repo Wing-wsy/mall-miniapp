@@ -2,8 +2,10 @@ import { request } from "@/utils/request";
 
 export interface CartItemVO {
   id: number;
-  productId: number;
-  skuId: number;
+  itemType?: number;
+  productId?: number;
+  skuId?: number;
+  comboId?: number;
   productName: string;
   coverUrl?: string;
   specName?: string;
@@ -14,6 +16,7 @@ export interface CartItemVO {
   quantity: number;
   convertQty?: number;
   sellableQty?: number;
+  components?: { productName: string; specName?: string; quantity: number }[];
   invalidReason?: string;
 }
 
@@ -37,11 +40,11 @@ export function fetchCartCount() {
   });
 }
 
-export function addCart(skuId: number, quantity: number) {
+export function addCart(skuId?: number, quantity = 1, comboId?: number) {
   return request<CartItemVO>({
     url: "/api/app/cart",
     method: "POST",
-    data: { skuId, quantity },
+    data: comboId ? { comboId, quantity } : { skuId, quantity },
   });
 }
 
