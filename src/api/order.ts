@@ -8,9 +8,12 @@ export interface OrderItemVO {
   comboId?: number;
   productId?: number;
   skuId?: number;
+  sellUnitId?: number;
   productName: string;
   coverUrl?: string;
+  attrText?: string;
   specName?: string;
+  sellUnitName?: string;
   price: number | string;
   quantity: number;
   convertQty?: number;

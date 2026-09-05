@@ -23,17 +23,33 @@
       <text class="name">{{ product.name }}</text>
       <text v-if="product.subtitle" class="subtitle">{{ product.subtitle }}</text>
     </view>
-    <view v-if="skus.length" class="panel">
-      <text class="section">规格</text>
-      <view class="spec-list">
-        <view
-          v-for="sku in skus"
-          :key="sku.id"
-          class="spec-chip"
-          :class="{ active: selectedSkuId === sku.id, sold: (sku.sellableQty || 0) <= 0 }"
-          @click="selectedSkuId = sku.id"
-        >
-          <text>{{ sku.specName }}</text>
+    <view v-if="attrs.length || skus.length" class="panel">
+      <view v-for="attr in attrs" :key="attr.attrId" class="attr-block">
+        <text class="section">{{ attr.attrName }}</text>
+        <view class="spec-list">
+          <view
+            v-for="val in attr.values || []"
+            :key="val.id"
+            class="spec-chip"
+            :class="{ active: selectedValueByAttr[attr.attrId] === val.id }"
+            @click="selectedValueByAttr[attr.attrId] = val.id"
+          >
+            <text>{{ val.valueName }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-if="!attrs.length && skus.length > 1" class="attr-block">
+        <text class="section">规格</text>
+        <view class="spec-list">
+          <view
+            v-for="sku in skus"
+            :key="sku.id"
+            class="spec-chip"
+            :class="{ active: selectedSkuId === sku.id, sold: skuStock(sku) <= 0 }"
+            @click="selectedSkuId = sku.id"
+          >
+            <text>{{ sku.attrText || sku.specName || "默认" }}</text>
+          </view>
         </view>
       </view>
       <text class="meta">{{ stockHint }}</text>
@@ -71,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { fetchPointProductDetail } from "@/api/point";
 import type { ProductDetailVO, ProductSkuVO } from "@/api/product";
@@ -83,6 +99,7 @@ const userStore = useUserStore();
 const product = ref<ProductDetailVO | null>(null);
 const unitPoints = ref(0);
 const selectedSkuId = ref<number | null>(null);
+const selectedValueByAttr = reactive<Record<number, number>>({});
 const qty = ref(1);
 const error = ref("");
 
@@ -94,27 +111,54 @@ const gallery = computed(() => {
   return product.value?.coverUrl ? [product.value.coverUrl] : [];
 });
 const detailImages = computed(() => (product.value?.detailImageUrls || []).filter(Boolean));
+const attrs = computed(() => product.value?.attrs || []);
 const skus = computed<ProductSkuVO[]>(() =>
-  (product.value?.skus || []).filter((sku) => sku.isBase === 1)
+  (product.value?.skus || []).filter((sku) => sku.status == null || sku.status === 1),
 );
-const selectedSku = computed(() => skus.value.find((sku) => sku.id === selectedSkuId.value) || skus.value[0]);
-const maxQty = computed(() => selectedSku.value?.sellableQty || 0);
+
+function sameValueIds(a: number[] = [], b: number[] = []) {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort((x, y) => x - y);
+  const sb = [...b].sort((x, y) => x - y);
+  return sa.every((v, i) => v === sb[i]);
+}
+
+function skuStock(sku?: ProductSkuVO) {
+  if (!sku) return 0;
+  return sku.stock ?? sku.sellableQty ?? 0;
+}
+
+const selectedSku = computed(() => {
+  if (!skus.value.length) return undefined;
+  if (attrs.value.length) {
+    const ids = attrs.value
+      .map((attr) => selectedValueByAttr[attr.attrId])
+      .filter((id): id is number => id != null);
+    if (ids.length !== attrs.value.length) return undefined;
+    return skus.value.find((sku) => sameValueIds(sku.attrValueIds || [], ids));
+  }
+  return skus.value.find((sku) => sku.id === selectedSkuId.value) || skus.value[0];
+});
+
+const maxQty = computed(() => skuStock(selectedSku.value));
 const canRedeem = computed(() => !!selectedSku.value && maxQty.value > 0);
 const totalPoints = computed(() => unitPoints.value * qty.value);
 const stockHint = computed(() => {
   const sku = selectedSku.value;
   if (!sku) {
-    return "";
+    return attrs.value.length ? "请选择完整属性" : "";
   }
-  return `本规格可兑 ${maxQty.value}${sku.specName || ""}`;
+  const label = sku.attrText || sku.specName || "";
+  return `本规格可兑 ${maxQty.value}${label}`;
 });
 
-watch(selectedSkuId, (_next, prev) => {
-  if (prev == null) {
-    return;
-  }
-  qty.value = 1;
-});
+watch(
+  () => selectedSku.value?.id,
+  (_next, prev) => {
+    if (prev == null) return;
+    qty.value = 1;
+  },
+);
 
 function changeQty(delta: number) {
   const next = qty.value + delta;
@@ -149,6 +193,15 @@ function onRedeem() {
   });
 }
 
+function initSelection() {
+  for (const attr of attrs.value) {
+    if (attr.values?.[0]) {
+      selectedValueByAttr[attr.attrId] = attr.values[0].id;
+    }
+  }
+  selectedSkuId.value = skus.value[0]?.id || null;
+}
+
 onLoad(async (query) => {
   if (!(await assertPointsOpen())) {
     return;
@@ -167,7 +220,7 @@ onLoad(async (query) => {
         await prefetchImageField(product.value, "detailImageUrls");
       }
       unitPoints.value = res.data?.points || 0;
-      selectedSkuId.value = product.value?.skus?.[0]?.id || null;
+      initSelection();
     })
     .catch((e: unknown) => {
       error.value = e instanceof Error ? e.message : "加载失败";
@@ -238,6 +291,9 @@ onLoad(async (query) => {
   margin-top: 10rpx;
   font-size: 24rpx;
   color: #9ca3af;
+}
+.attr-block {
+  margin-bottom: 16rpx;
 }
 .spec-list {
   display: flex;

@@ -41,7 +41,7 @@
         <view v-else class="comp-cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
         <view class="comp-info">
           <text class="comp-name">{{ item.productName }}</text>
-          <text class="comp-spec">{{ item.specName }} ×{{ item.quantity }}</text>
+          <text class="comp-spec">{{ item.attrText || item.specName || "默认" }} ×{{ item.quantity }}</text>
         </view>
         <text class="comp-arrow">›</text>
       </view>

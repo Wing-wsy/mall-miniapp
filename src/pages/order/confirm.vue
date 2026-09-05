@@ -24,7 +24,7 @@
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 2) }}</view>
           <view class="info">
             <text class="gname">{{ item.productName }}</text>
-            <text class="spec">{{ item.itemType === 2 ? "礼盒" : item.specName }}</text>
+            <text class="spec">{{ cartItemLabel(item) }}</text>
             <text v-if="item.itemType === 2 && item.components?.length" class="spec">
               含 {{ item.components.map((c) => `${c.productName}×${c.quantity}`).join("、") }}
             </text>
@@ -93,7 +93,7 @@
           <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 2) }}</view>
           <view class="info">
             <text class="gname">{{ item.productName }}</text>
-            <text class="spec">{{ item.specName }}</text>
+            <text class="spec">{{ cartItemLabel(item) }}</text>
             <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
             <view class="row">
               <text class="price">{{ isPoints ? `${item.points || 0} 积分` : isVoucher ? "兑换券" : `¥${money(item.price)}` }}</text>
@@ -193,7 +193,7 @@ import {
   type OrderPreviewGroupVO,
 } from "@/api/order";
 import { previewVoucher, redeemVoucher } from "@/api/voucher";
-import { fetchCartCount } from "@/api/cart";
+import { fetchCartCount, cartItemLabel } from "@/api/cart";
 import { fetchShopContact } from "@/api/shop";
 import type { CouponVO } from "@/api/coupon";
 import { prefetchCoverUrls } from "@/utils/media";
@@ -404,7 +404,8 @@ function goGoods(item: OrderItemVO) {
     return;
   }
   const skuQuery = item.skuId ? `&skuId=${item.skuId}` : "";
-  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}` });
+  const unitQuery = item.sellUnitId ? `&sellUnitId=${item.sellUnitId}` : "";
+  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}${unitQuery}` });
 }
 
 async function onSubmit() {

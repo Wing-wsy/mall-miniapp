@@ -27,7 +27,7 @@
         <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
         <view class="info">
           <text class="gname">{{ item.productName }}</text>
-          <text class="spec">{{ item.itemType === 2 ? "礼盒" : item.specName }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
+          <text class="spec">{{ cartItemLabel(item) }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
           <text v-if="item.itemType === 2 && item.components?.length" class="spec">
             含 {{ item.components.map((c) => `${c.productName}×${c.quantity}`).join("、") }}
           </text>
@@ -87,6 +87,7 @@
 import { computed, ref } from "vue";
 import { onHide, onLoad, onShow, onUnload } from "@dcloudio/uni-app";
 import { cancelOrder, confirmOrder, fetchOrderDetail, prepayOrder, type OrderItemVO, type OrderVO } from "@/api/order";
+import { cartItemLabel } from "@/api/cart";
 import { prefetchCoverUrls } from "@/utils/media";
 import { publicShipFrom } from "@/utils/supplier";
 
@@ -359,7 +360,8 @@ function goGoods(item: OrderItemVO) {
     return;
   }
   const skuQuery = item.skuId ? `&skuId=${item.skuId}` : "";
-  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}` });
+  const unitQuery = item.sellUnitId ? `&sellUnitId=${item.sellUnitId}` : "";
+  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}${unitQuery}` });
 }
 
 function goExpress() {

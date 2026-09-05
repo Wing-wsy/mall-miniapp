@@ -3,6 +3,7 @@
     <view class="cover-box">
       <swiper
         v-if="gallery.length"
+        :key="gallery[0]"
         class="cover-swiper"
         :indicator-dots="gallery.length > 1"
         indicator-color="rgba(255,255,255,0.45)"
@@ -40,20 +41,39 @@
         节日：{{ product.festivalPaths.join("、") }}
       </text>
     </view>
-    <view v-if="skus.length" class="panel">
-      <text class="section">规格</text>
-      <view class="spec-list">
-        <view
-          v-for="sku in skus"
-          :key="sku.id"
-          class="spec-chip"
-          :class="{ active: selectedSkuId === sku.id, sold: (sku.sellableQty || 0) <= 0 }"
-          @click="selectedSkuId = sku.id"
-        >
-          <text>{{ sku.specName }}</text>
+
+    <view v-if="attrs.length || sellUnits.length || skus.length" class="panel">
+      <view v-for="attr in attrs" :key="attr.attrId" class="attr-block">
+        <text class="section">{{ attr.attrName }}</text>
+        <view class="spec-list">
+          <view
+            v-for="val in attr.values || []"
+            :key="val.id"
+            class="spec-chip"
+            :class="{ active: selectedValueByAttr[attr.attrId] === val.id }"
+            @click="selectAttrValue(attr.attrId, val.id)"
+          >
+            <text>{{ val.valueName }}</text>
+          </view>
         </view>
       </view>
-      <text v-if="convertHint" class="meta">{{ convertHint }}</text>
+
+      <view v-if="sellUnits.length" class="attr-block">
+        <text class="section">售卖单位</text>
+        <view class="spec-list">
+          <view
+            v-for="unit in sellUnits"
+            :key="unit.id"
+            class="spec-chip"
+            :class="{ active: selectedSellUnitId === unit.id, sold: unitSellable(unit) <= 0 }"
+            @click="selectedSellUnitId = unit.id"
+          >
+            <text>{{ unit.name }}</text>
+          </view>
+        </view>
+        <text v-if="convertHint" class="meta">{{ convertHint }}</text>
+      </view>
+
       <text class="meta">{{ stockHint }}</text>
       <view class="qty-row">
         <text class="qty-label">数量</text>
@@ -64,6 +84,7 @@
         </view>
       </view>
     </view>
+
     <view class="panel">
       <text class="section">商品详情</text>
       <text v-if="product.detailHtml" class="detail">{{ product.detailHtml }}</text>
@@ -92,9 +113,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { fetchProductDetail, type ProductDetailVO, type ProductSkuVO } from "@/api/product";
+import {
+  fetchProductDetail,
+  type ProductDetailVO,
+  type ProductSellUnitVO,
+  type ProductSkuVO,
+} from "@/api/product";
 import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
@@ -108,7 +134,8 @@ import { createShareLink } from "@/api/share";
 const userStore = useUserStore();
 const { canShare } = useProductShare();
 const product = ref<ProductDetailVO | null>(null);
-const selectedSkuId = ref<number | null>(null);
+const selectedValueByAttr = reactive<Record<number, number>>({});
+const selectedSellUnitId = ref<number | null>(null);
 const qty = ref(1);
 const adding = ref(false);
 const buying = ref(false);
@@ -116,53 +143,127 @@ const error = ref("");
 const cartItems = ref<CartItemVO[]>([]);
 const fromCartId = ref(0);
 const fromCartSkuId = ref(0);
-
-const gallery = computed(() => {
-  const urls = (product.value?.galleryUrls || []).filter(Boolean);
-  if (urls.length) {
-    return urls;
-  }
-  return product.value?.coverUrl ? [product.value.coverUrl] : [];
-});
+const fromCartSellUnitId = ref(0);
 
 const detailImages = computed(() => (product.value?.detailImageUrls || []).filter(Boolean));
 
-const skus = computed<ProductSkuVO[]>(() => product.value?.skus || []);
+const attrs = computed(() => product.value?.attrs || []);
 
-const selectedSku = computed(() => skus.value.find((sku) => sku.id === selectedSkuId.value) || skus.value[0]);
+const skus = computed<ProductSkuVO[]>(() =>
+  (product.value?.skus || []).filter((sku) => sku.status == null || sku.status === 1),
+);
 
-const displayPrice = computed(() => salePrice(selectedSku.value || product.value));
+const sellUnits = computed<ProductSellUnitVO[]>(() =>
+  (product.value?.sellUnits || []).filter((u) => u.status == null || u.status === 1),
+);
 
-const displayLinePrice = computed(() => linePrice(selectedSku.value || product.value));
+function sameValueIds(a: number[] = [], b: number[] = []) {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort((x, y) => x - y);
+  const sb = [...b].sort((x, y) => x - y);
+  return sa.every((v, i) => v === sb[i]);
+}
 
-const existingQty = computed(() => {
-  const skuId = selectedSku.value?.id;
-  if (!skuId) {
-    return 0;
-  }
-  return cartItems.value.find((item) => item.skuId === skuId)?.quantity || 0;
+const selectedSku = computed(() => {
+  if (!skus.value.length) return undefined;
+  if (!attrs.value.length) return skus.value[0];
+  const ids = attrs.value
+    .map((attr) => selectedValueByAttr[attr.attrId])
+    .filter((id): id is number => id != null);
+  if (ids.length !== attrs.value.length) return undefined;
+  return skus.value.find((sku) => sameValueIds(sku.attrValueIds || [], ids));
 });
 
-const remainingSellable = computed(() => {
-  const sku = selectedSku.value;
-  const stock = product.value?.stock ?? 0;
-  if (!sku) {
-    return 0;
+/** 有 SKU 图时置顶，切换颜色同步换主图 */
+const gallery = computed(() => {
+  const skuCover = selectedSku.value?.coverUrl;
+  const urls = (product.value?.galleryUrls || []).filter(Boolean) as string[];
+  const base = urls.length ? urls : product.value?.coverUrl ? [product.value.coverUrl] : [];
+  if (!skuCover) {
+    return base;
   }
-  const convertQty = sku.convertQty && sku.convertQty > 0 ? sku.convertQty : 1;
+  return [skuCover, ...base.filter((u) => u !== skuCover)];
+});
+
+const selectedUnit = computed(
+  () => sellUnits.value.find((u) => u.id === selectedSellUnitId.value) || sellUnits.value[0],
+);
+
+function convertOf(unit?: ProductSellUnitVO) {
+  return unit?.convertQty && unit.convertQty > 0 ? unit.convertQty : 1;
+}
+
+const priceSource = computed(() => {
+  const sku = selectedSku.value;
+  const unit = selectedUnit.value;
+  if (!sku) return product.value;
+  if (unit && unit.price != null && unit.price !== "") {
+    return {
+      price: unit.price,
+      originPrice: unit.originPrice ?? undefined,
+      memberPrice: unit.memberPrice,
+      sharePrice: unit.sharePrice,
+    };
+  }
+  const convert = convertOf(unit);
+  if (!unit || unit.isBase === 1 || convert === 1) {
+    return sku;
+  }
+  const mul = (v?: number | string | null) =>
+    v == null || v === "" ? v : Number((Number(v) * convert).toFixed(2));
+  return {
+    price: mul(sku.price) as number,
+    originPrice: mul(sku.originPrice) as number | undefined,
+    memberPrice: mul(sku.memberPrice),
+    sharePrice: mul(sku.sharePrice),
+  };
+});
+
+const displayPrice = computed(() => salePrice(priceSource.value));
+
+const displayLinePrice = computed(() => linePrice(priceSource.value));
+
+function unitSellable(unit: ProductSellUnitVO) {
+  const sku = selectedSku.value;
+  if (!sku) return 0;
+  const convertQty = convertOf(unit);
+  const skuStock = sku.stock ?? 0;
   const occupiedOther = cartItems.value.reduce((sum, item) => {
-    if (item.skuId === sku.id) {
-      return sum;
-    }
+    if (item.skuId !== sku.id) return sum;
+    if (item.sellUnitId === unit.id) return sum;
     const itemConvert = item.convertQty && item.convertQty > 0 ? item.convertQty : 1;
     return sum + (item.quantity || 0) * itemConvert;
   }, 0);
-  return Math.floor(Math.max(0, stock - occupiedOther) / convertQty);
+  return Math.floor(Math.max(0, skuStock - occupiedOther) / convertQty);
+}
+
+const existingQty = computed(() => {
+  const skuId = selectedSku.value?.id;
+  const unitId = selectedUnit.value?.id;
+  if (!skuId) return 0;
+  return (
+    cartItems.value.find(
+      (item) => item.skuId === skuId && (unitId == null || item.sellUnitId == null || item.sellUnitId === unitId),
+    )?.quantity || 0
+  );
 });
 
-const editingCart = computed(
-  () => fromCartId.value > 0 && !!selectedSkuId.value && selectedSkuId.value === fromCartSkuId.value,
-);
+const remainingSellable = computed(() => {
+  const unit = selectedUnit.value;
+  if (!unit) {
+    const sku = selectedSku.value;
+    return sku?.stock ?? sku?.sellableQty ?? 0;
+  }
+  return unitSellable(unit);
+});
+
+const editingCart = computed(() => {
+  if (!(fromCartId.value > 0 && selectedSku.value?.id === fromCartSkuId.value)) {
+    return false;
+  }
+  if (!fromCartSellUnitId.value) return true;
+  return selectedUnit.value?.id === fromCartSellUnitId.value;
+});
 
 const maxQty = computed(() => {
   if (editingCart.value) {
@@ -171,38 +272,45 @@ const maxQty = computed(() => {
   return Math.max(0, remainingSellable.value - existingQty.value);
 });
 
-const canAdd = computed(() => !!selectedSku.value && remainingSellable.value > 0);
+const canAdd = computed(() => {
+  if (!selectedSku.value || remainingSellable.value <= 0) return false;
+  if (sellUnits.value.length > 0 && !selectedUnit.value) return false;
+  return true;
+});
 
 const convertHint = computed(() => {
-  const sku = selectedSku.value;
-  const baseName = product.value?.baseSpecName;
-  if (!sku || sku.isBase === 1 || !sku.convertQty || sku.convertQty <= 1 || !baseName) {
+  const unit = selectedUnit.value;
+  const baseName = product.value?.baseSpecName || sellUnits.value.find((u) => u.isBase === 1)?.name;
+  if (!unit || unit.isBase === 1 || !unit.convertQty || unit.convertQty <= 1 || !baseName) {
     return "";
   }
-  return `1${sku.specName} = ${sku.convertQty}${baseName}`;
+  return `1${unit.name} = ${unit.convertQty}${baseName}`;
 });
 
 const stockHint = computed(() => {
-  const stock = product.value?.stock ?? 0;
-  const baseName = product.value?.baseSpecName || "";
   const sku = selectedSku.value;
-  if (!sku) {
-    return `库存 ${stock}${baseName}`;
+  const unit = selectedUnit.value;
+  if (!sku || !unit) {
+    return sku ? `库存 ${sku.stock ?? 0}` : "";
   }
-  const spec = sku.specName || "";
-  let text = `库存 ${stock}${baseName}，本规格可购 ${remainingSellable.value}${spec}`;
+  const unitName = unit.name || "";
+  let text = `本规格库存 ${sku.stock ?? 0}，可购 ${remainingSellable.value}${unitName}`;
   if (!editingCart.value && existingQty.value > 0) {
-    text += `，还可加购 ${maxQty.value}${spec}`;
+    text += `，还可加购 ${maxQty.value}${unitName}`;
   }
   return text;
 });
 
-watch(selectedSkuId, (_next, prev) => {
-  if (prev == null) {
+watch([() => selectedSku.value?.id, selectedSellUnitId], (_next, prev) => {
+  if (prev == null || (Array.isArray(prev) && prev[0] == null && prev[1] == null)) {
     return;
   }
   qty.value = 1;
 });
+
+function selectAttrValue(attrId: number, valueId: number) {
+  selectedValueByAttr[attrId] = valueId;
+}
 
 function changeQty(delta: number) {
   const next = qty.value + delta;
@@ -254,7 +362,11 @@ function toast(msg: string) {
 
 async function ensureReady() {
   if (!selectedSku.value) {
-    toast("请选择规格");
+    toast(attrs.value.length ? "请选择完整属性" : "请选择规格");
+    return false;
+  }
+  if (sellUnits.value.length > 0 && !selectedUnit.value) {
+    toast("请选择售卖单位");
     return false;
   }
   if (!canAdd.value) {
@@ -273,7 +385,7 @@ async function ensureReady() {
 }
 
 async function onAddCart() {
-  if (!(await ensureReady())) {
+  if (!(await ensureReady()) || !selectedSku.value) {
     return;
   }
   adding.value = true;
@@ -282,7 +394,7 @@ async function onAddCart() {
       await updateCartQty(fromCartId.value, qty.value);
       toast("已更新购物车");
     } else {
-      await addCart(selectedSku.value.id, qty.value);
+      await addCart(selectedSku.value.id, qty.value, undefined, selectedUnit.value?.id);
       toast("已加入购物车");
     }
     await loadCartOccupancy();
@@ -304,12 +416,17 @@ async function onBuyNow() {
   }
   buying.value = true;
   try {
-    const existing = cartItems.value.find((item) => item.skuId === selectedSku.value?.id);
-    let cartId = existing?.id || fromCartId.value;
+    const unitId = selectedUnit.value?.id;
+    const existing = cartItems.value.find(
+      (item) =>
+        item.skuId === selectedSku.value?.id &&
+        (unitId == null || item.sellUnitId == null || item.sellUnitId === unitId),
+    );
+    let cartId = existing?.id || (editingCart.value ? fromCartId.value : 0);
     if (cartId) {
       await updateCartQty(cartId, qty.value);
     } else {
-      const res = await addCart(selectedSku.value.id, qty.value);
+      const res = await addCart(selectedSku.value.id, qty.value, undefined, unitId);
       cartId = res.data?.id || 0;
     }
     if (!cartId) {
@@ -358,12 +475,41 @@ async function onCopyShare() {
   }
 }
 
+function initSelection(skuId: number, sellUnitId: number) {
+  const matchSku = skuId ? skus.value.find((sku) => sku.id === skuId) : null;
+  const sku = matchSku || skus.value[0];
+  if (sku?.attrValueIds?.length && attrs.value.length) {
+    for (const attr of attrs.value) {
+      const hit = (attr.values || []).find((v) => sku.attrValueIds!.includes(v.id));
+      if (hit) {
+        selectedValueByAttr[attr.attrId] = hit.id;
+      } else if (attr.values?.[0]) {
+        selectedValueByAttr[attr.attrId] = attr.values[0].id;
+      }
+    }
+  } else {
+    for (const attr of attrs.value) {
+      if (attr.values?.[0]) {
+        selectedValueByAttr[attr.attrId] = attr.values[0].id;
+      }
+    }
+  }
+  const matchUnit = sellUnitId ? sellUnits.value.find((u) => u.id === sellUnitId) : null;
+  const preferred =
+    matchUnit ||
+    sellUnits.value.find((u) => u.isBase === 1) ||
+    sellUnits.value[0];
+  selectedSellUnitId.value = preferred?.id ?? null;
+}
+
 onLoad((query) => {
   const id = Number((query && query.id) || 0);
   const skuId = Number((query && query.skuId) || 0);
+  const sellUnitId = Number((query && query.sellUnitId) || 0);
   const queryQty = Number((query && query.qty) || 0);
   fromCartId.value = Number((query && query.cartId) || 0);
   fromCartSkuId.value = skuId;
+  fromCartSellUnitId.value = sellUnitId;
   if (!id) {
     error.value = "商品不存在";
     return;
@@ -375,10 +521,11 @@ onLoad((query) => {
         await prefetchImageField(product.value, "coverUrl");
         await prefetchImageField(product.value, "galleryUrls");
         await prefetchImageField(product.value, "detailImageUrls");
+        for (const sku of product.value.skus || []) {
+          await prefetchImageField(sku as Record<string, unknown>, "coverUrl");
+        }
       }
-      const match = skuId ? res.data?.skus?.find((sku) => sku.id === skuId) : null;
-      const first = match || res.data?.skus?.[0];
-      selectedSkuId.value = first ? first.id : null;
+      initSelection(skuId, sellUnitId);
       await loadCartOccupancy();
       if (queryQty > 0) {
         const max = maxQty.value || queryQty;
@@ -521,6 +668,10 @@ onLoad((query) => {
   margin-top: 10rpx;
   font-size: 24rpx;
   color: #9ca3af;
+}
+
+.attr-block {
+  margin-bottom: 16rpx;
 }
 
 .spec-list {

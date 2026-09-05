@@ -36,7 +36,7 @@
         <image v-if="item.coverUrl" class="cover" :src="item.coverUrl" mode="aspectFill" />
         <view class="info">
           <text>{{ item.productName }}</text>
-          <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
+          <text class="spec">{{ cartItemLabel(item) }} x{{ item.quantity }}</text>
         </view>
       </view>
     </view>
@@ -66,6 +66,7 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { cancelAfterSale, fetchAfterSaleDetail, fillAfterSaleReturn, type AfterSaleVO } from "@/api/aftersale";
+import { cartItemLabel } from "@/api/cart";
 import { prefetchCoverUrls, prefetchImageField } from "@/utils/media";
 
 const detail = ref<AfterSaleVO | null>(null);

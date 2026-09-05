@@ -6,7 +6,7 @@
         <view v-else class="cover fallback">{{ (item.productName || "").slice(0, 1) }}</view>
         <view class="info">
           <text class="gname">{{ item.productName }}</text>
-          <text class="spec">{{ item.specName }} x{{ item.quantity }}</text>
+          <text class="spec">{{ cartItemLabel(item) }} x{{ item.quantity }}</text>
         </view>
       </view>
       <text class="amt">整单 {{ amountText }}</text>
@@ -73,6 +73,7 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { applyAfterSale, fetchAfterSaleReasons, type AfterSaleReasonVO } from "@/api/aftersale";
 import { fetchOrderDetail, type OrderVO } from "@/api/order";
+import { cartItemLabel } from "@/api/cart";
 import { uploadAppFile } from "@/api/file";
 import { prefetchCoverUrls } from "@/utils/media";
 

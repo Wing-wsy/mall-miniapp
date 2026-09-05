@@ -7,7 +7,7 @@
         <view class="info">
           <text class="gname">{{ item.productName }}</text>
           <text class="spec">
-            {{ item.itemType === 2 ? "礼盒" : item.specName }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}
+            {{ cartItemLabel(item) }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}
           </text>
         </view>
       </view>
@@ -78,6 +78,7 @@ import {
   submitOrderReview,
   type OrderVO,
 } from "@/api/order";
+import { cartItemLabel } from "@/api/cart";
 import { uploadAppFile } from "@/api/file";
 import { prefetchCoverUrls, prefetchImage } from "@/utils/media";
 

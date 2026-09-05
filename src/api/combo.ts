@@ -6,6 +6,7 @@ export interface ComboItemVO {
   productName: string;
   coverUrl?: string;
   specName?: string;
+  attrText?: string;
   skuPrice?: number | string;
   quantity: number;
 }

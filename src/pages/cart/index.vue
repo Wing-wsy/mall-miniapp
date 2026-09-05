@@ -31,7 +31,7 @@
         </view>
         <view class="info">
           <text class="name">{{ item.productName }}</text>
-          <text class="spec">{{ item.itemType === 2 ? "礼盒" : item.specName }}</text>
+          <text class="spec">{{ cartItemLabel(item) }}</text>
           <text v-if="item.itemType === 2 && item.components?.length" class="spec">
             含 {{ item.components.map((c) => c.productName).join("、") }}
           </text>
@@ -83,6 +83,7 @@ import {
   deleteCart,
   fetchCartList,
   updateCartQty,
+  cartItemLabel,
   type CartItemVO,
 } from "@/api/cart";
 import { salePrice } from "@/utils/price";
@@ -250,9 +251,12 @@ function goDetail(item: CartItemVO) {
     return;
   }
   const skuQuery = item.skuId ? `&skuId=${item.skuId}` : "";
+  const unitQuery = item.sellUnitId ? `&sellUnitId=${item.sellUnitId}` : "";
   const qtyQuery = item.quantity > 0 ? `&qty=${item.quantity}` : "";
   const cartQuery = item.id ? `&cartId=${item.id}` : "";
-  uni.navigateTo({ url: `/pages/goods/detail?id=${item.productId}${skuQuery}${qtyQuery}${cartQuery}` });
+  uni.navigateTo({
+    url: `/pages/goods/detail?id=${item.productId}${skuQuery}${unitQuery}${qtyQuery}${cartQuery}`,
+  });
 }
 
 function goHome() {

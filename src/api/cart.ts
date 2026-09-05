@@ -5,10 +5,13 @@ export interface CartItemVO {
   itemType?: number;
   productId?: number;
   skuId?: number;
+  sellUnitId?: number;
   comboId?: number;
   productName: string;
   coverUrl?: string;
+  attrText?: string;
   specName?: string;
+  sellUnitName?: string;
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;
@@ -16,7 +19,7 @@ export interface CartItemVO {
   quantity: number;
   convertQty?: number;
   sellableQty?: number;
-  components?: { productName: string; specName?: string; quantity: number }[];
+  components?: { productName: string; specName?: string; attrText?: string; quantity: number }[];
   invalidReason?: string;
 }
 
@@ -40,11 +43,13 @@ export function fetchCartCount() {
   });
 }
 
-export function addCart(skuId?: number, quantity = 1, comboId?: number) {
+export function addCart(skuId?: number, quantity = 1, comboId?: number, sellUnitId?: number) {
   return request<CartItemVO>({
     url: "/api/app/cart",
     method: "POST",
-    data: comboId ? { comboId, quantity } : { skuId, quantity },
+    data: comboId
+      ? { comboId, quantity }
+      : { skuId, quantity, ...(sellUnitId != null ? { sellUnitId } : {}) },
   });
 }
 
@@ -61,4 +66,21 @@ export function deleteCart(id: number) {
     url: `/api/app/cart/${id}`,
     method: "DELETE",
   });
+}
+
+export function cartItemLabel(item: {
+  itemType?: number;
+  attrText?: string;
+  specName?: string;
+  sellUnitName?: string;
+}) {
+  if (item.itemType === 2) {
+    return "礼盒";
+  }
+  const attr = item.attrText || item.specName || "";
+  const unit = item.sellUnitName || "";
+  if (attr && unit) {
+    return `${attr} · ${unit}`;
+  }
+  return attr || unit || "";
 }

@@ -30,7 +30,7 @@
           <view class="info">
             <text class="name">{{ item.productName }}</text>
             <text class="spec">
-              {{ item.itemType === 2 ? "礼盒" : item.specName }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}
+              {{ cartItemLabel(item) }} x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}
             </text>
           </view>
           <text class="price">{{ priceText(order, item) }}</text>
@@ -51,6 +51,7 @@
 import { ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { fetchOrderList, type OrderVO } from "@/api/order";
+import { cartItemLabel } from "@/api/cart";
 import { prefetchCoverUrls } from "@/utils/media";
 import { publicShipFrom } from "@/utils/supplier";
 

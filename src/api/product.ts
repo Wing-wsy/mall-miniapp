@@ -1,15 +1,48 @@
 import { request } from "@/utils/request";
 
+export interface ProductAttrValueVO {
+  id: number;
+  valueName: string;
+}
+
+export interface ProductAttrVO {
+  attrId: number;
+  attrName: string;
+  values?: ProductAttrValueVO[];
+  valueIds?: number[];
+}
+
 export interface ProductSkuVO {
   id: number;
-  specId: number;
-  specName: string;
+  attrValueIds?: number[];
+  attrText?: string;
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;
   sharePrice?: number | string | null;
+  stock?: number;
+  coverUrl?: string;
+  status?: number;
+  /** @deprecated use sellUnits */
+  specId?: number;
+  specName?: string;
   isBase?: number;
   convertQty?: number;
+  sellableQty?: number;
+}
+
+export interface ProductSellUnitVO {
+  id: number;
+  specId?: number;
+  name: string;
+  price?: number | string | null;
+  originPrice?: number | string | null;
+  memberPrice?: number | string | null;
+  sharePrice?: number | string | null;
+  isBase?: number;
+  convertQty?: number;
+  freightQty?: number;
+  status?: number;
   sellableQty?: number;
 }
 
@@ -30,7 +63,9 @@ export interface ProductDetailVO {
   festivalPaths?: string[];
   stock?: number;
   baseSpecName?: string;
+  attrs?: ProductAttrVO[];
   skus?: ProductSkuVO[];
+  sellUnits?: ProductSellUnitVO[];
   selfOperated?: boolean;
   supplierName?: string;
   shipFromLabel?: string;
