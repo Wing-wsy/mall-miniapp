@@ -2,6 +2,8 @@
 import { onLaunch, onShow } from "@dcloudio/uni-app";
 import { useThemeStore } from "@/stores/theme";
 import { fetchCartCount } from "@/api/cart";
+import { fetchShopContact } from "@/api/shop";
+import { syncMaintenanceFromContact } from "@/utils/maintenance";
 
 const themeStore = useThemeStore();
 const INVITE_CODE_KEY = "mall_level_invite_code";
@@ -9,6 +11,15 @@ const SHARE_SC_KEY = "mall_share_sc";
 const SHARE_PID_KEY = "mall_share_pid";
 let lastInviteCode = "";
 let lastShareKey = "";
+
+async function refreshMaintenanceState() {
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // keep last known state
+  }
+}
 
 function consumeInviteCode(options?: { path?: string; query?: Record<string, any> }) {
   const code = String(options?.query?.code || "").trim();
@@ -56,12 +67,14 @@ onLaunch(async (options) => {
   consumeInviteCode(options);
   consumeShare(options);
   await themeStore.loadCurrent();
+  await refreshMaintenanceState();
 });
 
 onShow(async (options) => {
   consumeInviteCode(options);
   consumeShare(options);
   await themeStore.loadCurrent();
+  await refreshMaintenanceState();
   const token = uni.getStorageSync("mall_app_token");
   if (!token) {
     uni.removeTabBarBadge({ index: 2 });

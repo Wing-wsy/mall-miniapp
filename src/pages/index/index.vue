@@ -185,6 +185,7 @@ import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImage, prefetchImageField } from "@/utils/media";
+import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 
@@ -286,15 +287,33 @@ function goSearch() {
   uni.navigateTo({ url: "/pages/goods/search" });
 }
 
-function goDetail(id: number) {
+async function goDetail(id: number) {
   if (!id) {
     toast("商品不存在");
+    return;
+  }
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // 用本地已同步状态
+  }
+  if (!guardMaintenanceNavigate()) {
     return;
   }
   uni.navigateTo({ url: `/pages/goods/detail?id=${id}` });
 }
 
-function goGoodsList(query: string, title: string) {
+async function goGoodsList(query: string, title: string) {
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // ignore
+  }
+  if (!guardMaintenanceNavigate()) {
+    return;
+  }
   uni.navigateTo({
     url: `/pages/goods/list?${query}&title=${encodeURIComponent(title || "商品列表")}`,
   });
@@ -482,11 +501,13 @@ async function loadNotice() {
     voucherEnabled.value = res.data?.voucherEnabled === true;
     pointsEnabled.value = res.data?.pointsEnabled === true;
     couponEnabled.value = res.data?.couponEnabled === true;
+    syncMaintenanceFromContact(res.data);
   } catch {
     notice.value = "";
     voucherEnabled.value = false;
     pointsEnabled.value = false;
     couponEnabled.value = false;
+    syncMaintenanceFromContact(null);
   }
 }
 

@@ -1,3 +1,5 @@
+import { MAINTENANCE_MESSAGE, notifyMaintenance } from "@/utils/maintenance";
+
 // WeChat treats 127.0.0.1 as an invalid upload URL (including large JSON POSTs).
 // export const BASE_URL = "http://127.0.0.1:9081";
 // export const BASE_URL = "http://192.168.10.122:9081";
@@ -13,10 +15,22 @@ export interface ApiResult<T = unknown> {
 
 export class ApiError extends Error {
   code: number;
-  constructor(code: number, message: string) {
+  /** 维护拦截：全局已弹窗，业务层勿再 toast */
+  maintenance: boolean;
+  constructor(code: number, message: string, maintenance = false) {
     super(message);
     this.code = code;
+    this.maintenance = maintenance;
   }
+}
+
+export type AppRequestOptions = UniApp.RequestOptions & {
+  /** 后台轮询等静默请求：维护时不弹窗 */
+  silent?: boolean;
+};
+
+function isMaintenanceMessage(message?: string) {
+  return message === MAINTENANCE_MESSAGE;
 }
 
 function toQuery(data: Record<string, unknown>) {
@@ -29,10 +43,10 @@ function toQuery(data: Record<string, unknown>) {
     .join("&");
 }
 
-export function request<T = unknown>(options: UniApp.RequestOptions) {
+export function request<T = unknown>(options: AppRequestOptions) {
   const token = uni.getStorageSync("mall_app_token") || "";
   const method = String(options.method || "GET").toUpperCase();
-  const { url: rawUrl = "", data: rawData, header: rawHeader, ...rest } = options;
+  const { url: rawUrl = "", data: rawData, header: rawHeader, silent, ...rest } = options;
   let url = `${BASE_URL}${rawUrl}`;
   let data: UniApp.RequestOptions["data"] | undefined = rawData;
   if (method === "GET" && data && typeof data === "object" && !Array.isArray(data)) {
@@ -55,12 +69,19 @@ export function request<T = unknown>(options: UniApp.RequestOptions) {
       success: (res) => {
         const body = res.data as ApiResult<T>;
         if (body && typeof body.code === "number" && body.code !== 0) {
+          const msg = body.message || "请求失败";
+          if (isMaintenanceMessage(msg)) {
+            if (!silent) {
+              notifyMaintenance(msg);
+            }
+            reject(new ApiError(body.code, msg, true));
+            return;
+          }
           if (body.code === 401 || body.code === 403) {
             uni.removeStorageSync("mall_app_token");
             uni.removeStorageSync("mall_app_user");
             if (body.code === 403) {
-              const msg = body.message || "账号已被限制，无法使用小程序";
-              uni.showToast({ title: msg, icon: "none" });
+              uni.showToast({ title: msg || "账号已被限制，无法使用小程序", icon: "none" });
               const pages = getCurrentPages();
               const cur = pages.length ? pages[pages.length - 1]?.route || "" : "";
               if (!cur.includes("pages/login/index")) {
@@ -70,7 +91,7 @@ export function request<T = unknown>(options: UniApp.RequestOptions) {
               }
             }
           }
-          reject(new ApiError(body.code, body.message || "请求失败"));
+          reject(new ApiError(body.code, msg));
           return;
         }
         resolve(body);

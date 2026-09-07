@@ -123,6 +123,7 @@ import {
 } from "@/api/product";
 import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
 import { ApiError } from "@/utils/request";
+import { isMaintenanceError } from "@/utils/maintenance";
 import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
@@ -404,7 +405,9 @@ async function onAddCart() {
       goLogin();
       return;
     }
-    toast(e instanceof Error ? e.message : "加购失败");
+    if (!isMaintenanceError(e)) {
+      toast(e instanceof Error ? e.message : "加购失败");
+    }
   } finally {
     adding.value = false;
   }
@@ -441,7 +444,9 @@ async function onBuyNow() {
       goLogin();
       return;
     }
-    toast(e instanceof Error ? e.message : "下单失败");
+    if (!isMaintenanceError(e)) {
+      toast(e instanceof Error ? e.message : "下单失败");
+    }
   } finally {
     buying.value = false;
   }
@@ -517,13 +522,21 @@ onLoad((query) => {
   fetchProductDetail(id)
     .then(async (res) => {
       product.value = res.data;
-      if (product.value) {
+      if (!product.value) {
+        error.value = "商品不存在或已下架";
+        return;
+      }
+      error.value = "";
+      // 先展示详情，图片预取失败不阻断
+      try {
         await prefetchImageField(product.value, "coverUrl");
         await prefetchImageField(product.value, "galleryUrls");
         await prefetchImageField(product.value, "detailImageUrls");
         for (const sku of product.value.skus || []) {
           await prefetchImageField(sku as Record<string, unknown>, "coverUrl");
         }
+      } catch {
+        // ignore prefetch errors
       }
       initSelection(skuId, sellUnitId);
       await loadCartOccupancy();
@@ -533,6 +546,7 @@ onLoad((query) => {
       }
     })
     .catch((e: unknown) => {
+      product.value = null;
       error.value = e instanceof Error ? e.message : "加载失败";
     });
 });

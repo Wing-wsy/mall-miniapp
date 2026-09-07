@@ -27,6 +27,8 @@ import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchComboList, type ComboVO } from "@/api/combo";
 import { prefetchCoverUrls } from "@/utils/media";
+import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
+import { fetchShopContact } from "@/api/shop";
 
 const list = ref<ComboVO[]>([]);
 const loading = ref(false);
@@ -48,7 +50,16 @@ async function load() {
   }
 }
 
-function goDetail(id: number) {
+async function goDetail(id: number) {
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // ignore
+  }
+  if (!guardMaintenanceNavigate()) {
+    return;
+  }
   uni.navigateTo({ url: `/pages/combo/detail?id=${id}` });
 }
 

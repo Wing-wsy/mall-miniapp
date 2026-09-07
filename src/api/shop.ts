@@ -7,6 +7,8 @@ export interface ShopContactVO {
   voucherEnabled?: boolean;
   pointsEnabled?: boolean;
   couponEnabled?: boolean;
+  maintenanceEnabled?: boolean;
+  maintenanceBypass?: boolean;
 }
 
 export function fetchShopContact() {

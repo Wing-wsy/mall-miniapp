@@ -36,6 +36,8 @@ import {
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
+import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
+import { fetchShopContact } from "@/api/shop";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 
@@ -65,7 +67,16 @@ async function load(options: Record<string, string | undefined>) {
   }
 }
 
-function goDetail(id: number) {
+async function goDetail(id: number) {
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // ignore
+  }
+  if (!guardMaintenanceNavigate()) {
+    return;
+  }
   uni.navigateTo({ url: `/pages/goods/detail?id=${id}` });
 }
 

@@ -14,6 +14,8 @@ import { ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import { bindShare } from "@/api/share";
+import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
+import { fetchShopContact } from "@/api/shop";
 
 const SC_KEY = "mall_share_sc";
 const PID_KEY = "mall_share_pid";
@@ -105,8 +107,18 @@ async function enter() {
   }
 }
 
-function goTarget(productId?: number) {
+async function goTarget(productId?: number) {
   if (productId && productId > 0) {
+    try {
+      const res = await fetchShopContact();
+      syncMaintenanceFromContact(res.data);
+    } catch {
+      // ignore
+    }
+    if (!guardMaintenanceNavigate()) {
+      uni.switchTab({ url: "/pages/index/index" });
+      return;
+    }
     uni.redirectTo({
       url: `/pages/goods/detail?id=${productId}`,
       fail: () => {

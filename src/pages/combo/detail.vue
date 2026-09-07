@@ -88,6 +88,7 @@ import { fetchComboDetail, type ComboItemVO, type ComboVO } from "@/api/combo";
 import { addCart } from "@/api/cart";
 import { prefetchCoverUrls, prefetchImageField } from "@/utils/media";
 import { useUserStore } from "@/stores/user";
+import { isMaintenanceError } from "@/utils/maintenance";
 
 const userStore = useUserStore();
 const combo = ref<ComboVO | null>(null);
@@ -176,7 +177,9 @@ async function onAddCart() {
     await addCart(undefined, qty.value, combo.value.id);
     uni.showToast({ title: "已加入购物车", icon: "success" });
   } catch (e: any) {
-    uni.showToast({ title: e?.message || "加购失败", icon: "none" });
+    if (!isMaintenanceError(e)) {
+      uni.showToast({ title: e?.message || "加购失败", icon: "none" });
+    }
   } finally {
     adding.value = false;
   }
@@ -195,7 +198,9 @@ async function onBuy() {
     const cartId = res.data?.id;
     uni.navigateTo({ url: `/pages/order/confirm?cartIds=${cartId}` });
   } catch (e: any) {
-    uni.showToast({ title: e?.message || "下单失败", icon: "none" });
+    if (!isMaintenanceError(e)) {
+      uni.showToast({ title: e?.message || "下单失败", icon: "none" });
+    }
   } finally {
     buying.value = false;
   }

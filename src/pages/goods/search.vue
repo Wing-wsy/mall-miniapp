@@ -77,6 +77,8 @@ import { searchProducts, type ProductCardVO } from "@/api/product";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchCoverUrls } from "@/utils/media";
+import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
+import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
@@ -274,7 +276,16 @@ async function load(reset: boolean) {
   }
 }
 
-function goDetail(id: number) {
+async function goDetail(id: number) {
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // ignore
+  }
+  if (!guardMaintenanceNavigate()) {
+    return;
+  }
   uni.navigateTo({ url: `/pages/goods/detail?id=${id}` });
 }
 

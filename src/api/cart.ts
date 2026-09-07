@@ -40,6 +40,7 @@ export function fetchCartCount() {
   return request<{ totalQuantity: number }>({
     url: "/api/app/cart/count",
     method: "GET",
+    silent: true,
   });
 }
 

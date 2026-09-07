@@ -28,6 +28,8 @@ import { onShow } from "@dcloudio/uni-app";
 import { fetchPointProducts, type PointProductCardVO } from "@/api/point";
 import { prefetchCoverUrls } from "@/utils/media";
 import { assertPointsOpen } from "@/utils/featureGate";
+import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
+import { fetchShopContact } from "@/api/shop";
 
 const list = ref<PointProductCardVO[]>([]);
 const loading = ref(false);
@@ -48,7 +50,16 @@ async function load() {
   }
 }
 
-function goDetail(id: number) {
+async function goDetail(id: number) {
+  try {
+    const res = await fetchShopContact();
+    syncMaintenanceFromContact(res.data);
+  } catch {
+    // ignore
+  }
+  if (!guardMaintenanceNavigate()) {
+    return;
+  }
   uni.navigateTo({ url: `/pages/points/detail?id=${id}` });
 }
 
