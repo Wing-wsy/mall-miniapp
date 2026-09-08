@@ -31,13 +31,20 @@
             <text v-if="item.invalidReason" class="warn">{{ item.invalidReason }}</text>
             <view class="row">
               <text class="price">¥{{ money(item.price) }}</text>
-              <text class="qty">x{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
+              <view class="qty-box" @click.stop>
+                <text class="qty-btn" :class="{ disabled: qtyBusy || item.quantity <= 1 }" @click="changeItemQty(item, -1)">−</text>
+                <text class="qty-num">{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
+                <text class="qty-btn" :class="{ disabled: qtyBusy }" @click="changeItemQty(item, 1)">+</text>
+              </view>
             </view>
           </view>
         </view>
         <view class="line">
           <text>运费</text>
           <text>{{ groupFreight(g) }}</text>
+        </view>
+        <view v-if="(g.freeShipTips || []).length" class="free-ship-tips">
+          <text v-for="(tip, tipIndex) in g.freeShipTips" :key="tipIndex" class="free-ship-tip">{{ tip }}</text>
         </view>
         <view v-if="Number(g.memberDiscountAmount) > 0" class="line">
           <text>会员折扣</text>
@@ -193,11 +200,12 @@ import {
   type OrderPreviewGroupVO,
 } from "@/api/order";
 import { previewVoucher, redeemVoucher } from "@/api/voucher";
-import { fetchCartCount, cartItemLabel } from "@/api/cart";
+import { fetchCartCount, cartItemLabel, updateCartQty } from "@/api/cart";
 import { fetchShopContact } from "@/api/shop";
 import type { CouponVO } from "@/api/coupon";
 import { prefetchCoverUrls } from "@/utils/media";
 import { publicShipFrom } from "@/utils/supplier";
+import { ApiError } from "@/utils/request";
 
 const cartIds = ref<number[]>([]);
 const isPoints = ref(false);
@@ -227,6 +235,7 @@ const groups = ref<OrderPreviewGroupVO[]>([]);
 const couponBySupplier = ref<Record<string, number>>({});
 const remark = ref("");
 const previewOk = ref(false);
+const qtyBusy = ref(false);
 
 const canSubmit = computed(() => items.value.length > 0);
 const freightLabel = computed(() => {
@@ -528,6 +537,41 @@ function groupFreight(g: OrderPreviewGroupVO) {
   return `¥${money(g.freightAmount)}`;
 }
 
+async function changeItemQty(item: OrderItemVO, delta: number) {
+  if (qtyBusy.value || isPoints.value || isVoucher.value) {
+    return;
+  }
+  const cartId = item.id;
+  if (!cartId) {
+    return;
+  }
+  const next = (item.quantity || 0) + delta;
+  if (next < 1) {
+    return;
+  }
+  qtyBusy.value = true;
+  try {
+    await updateCartQty(cartId, next);
+    await loadPreview(true);
+    try {
+      const countRes = await fetchCartCount();
+      const n = countRes.data?.totalQuantity || 0;
+      if (n > 0) {
+        uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
+      } else {
+        uni.removeTabBarBadge({ index: 2 });
+      }
+    } catch {
+      // tab 未就绪时忽略
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "修改数量失败";
+    uni.showToast({ title: msg, icon: "none" });
+  } finally {
+    qtyBusy.value = false;
+  }
+}
+
 function groupCouponLabel(g: OrderPreviewGroupVO) {
   const id = couponIdOf(g);
   const list = g.coupons || [];
@@ -648,10 +692,35 @@ function money(v: unknown) {
   margin-top: auto;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 .price {
   color: #ff5a3d;
   font-weight: 700;
+}
+.qty-box {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.qty-btn {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  background: #f3f4f6;
+  text-align: center;
+  line-height: 48rpx;
+  color: #374151;
+  font-size: 28rpx;
+}
+.qty-btn.disabled {
+  color: #d1d5db;
+}
+.qty-num {
+  min-width: 40rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #374151;
 }
 .qty {
   color: #6b7280;
@@ -663,6 +732,16 @@ function money(v: unknown) {
   padding: 12rpx 0;
   font-size: 26rpx;
   color: #374151;
+}
+.free-ship-tips {
+  margin: -4rpx 0 8rpx;
+  padding-left: 0;
+}
+.free-ship-tip {
+  display: block;
+  font-size: 22rpx;
+  color: #9ca3af;
+  line-height: 1.5;
 }
 .coupon-val {
   color: #ff5a3d;

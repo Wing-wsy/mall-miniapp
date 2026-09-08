@@ -62,6 +62,9 @@
         <text>{{ isPoints ? "实付" : isVoucher ? "实付" : "应付" }}</text>
         <text class="pay">{{ isPoints ? `${order.pointsAmount || 0} 积分` : isVoucher ? "兑换券" : `¥${money(order.payAmount)}` }}</text>
       </view>
+      <view v-if="!isPoints && !isVoucher && order.payAdjusted" class="adjust-tip">
+        商家已调整应付金额，原应付 ¥{{ money(order.originPayAmount) }}
+      </view>
     </view>
     <view class="card meta">
       <text>订单号 {{ order.orderNo }}</text>
@@ -527,6 +530,12 @@ function goAfterSale() {
 }
 .pay {
   color: #ff5a3d;
+}
+.adjust-tip {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  line-height: 1.4;
 }
 .off {
   color: #ff5a3d;

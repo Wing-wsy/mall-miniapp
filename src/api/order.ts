@@ -57,6 +57,9 @@ export interface OrderVO {
   memberDiscountAmount?: number | string;
   pointsAmount?: number;
   payAmount: number | string;
+  originPayAmount?: number | string;
+  payAdjusted?: boolean;
+  payAdjustAmount?: number | string;
   payChannel?: string;
   payStatus?: number;
   payTime?: string;
@@ -135,6 +138,8 @@ export interface OrderPreviewGroupVO {
   freightAmount?: number | string;
   freightFree?: boolean;
   freightHint?: string;
+  /** 省份已命中但件数未满时的包邮引导 */
+  freeShipTips?: string[];
   couponAmount?: number | string;
   couponName?: string;
   selectedCouponId?: number | null;
