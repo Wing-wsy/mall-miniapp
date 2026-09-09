@@ -54,9 +54,12 @@
           <view class="body">
             <text class="name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price">¥{{ salePrice(item) }}</text>
-              <text v-if="item.multiSpec" class="from">起</text>
-              <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+              <view class="price-left">
+                <text class="price">¥{{ salePrice(item) }}</text>
+                <text v-if="item.multiSpec" class="from">起</text>
+                <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+              </view>
+              <goods-add-cart-btn :product-id="item.id" :multi-spec="!!item.multiSpec" />
             </view>
           </view>
         </view>
@@ -81,6 +84,7 @@ import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/ma
 import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
 import ProductShareBtn from "@/components/product-share-btn.vue";
+import GoodsAddCartBtn from "@/components/goods-add-cart-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 
 const HISTORY_KEY = "mall_search_history";
@@ -481,7 +485,16 @@ onShow(() => {
 .price-row {
   margin-top: 8rpx;
   display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.price-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 10rpx;
 }
 

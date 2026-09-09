@@ -106,6 +106,7 @@ let contactLoading = false;
 const menus = computed(() => {
   const list = [
     { name: "收货地址", action: "address" },
+    { name: "我的收藏", action: "favorite" },
     { name: "我的订单", action: "orders" },
     { name: "退款/售后", action: "aftersale" },
   ];
@@ -206,6 +207,14 @@ function onMenu(item: { name: string; action: string }) {
       return;
     }
     uni.navigateTo({ url: "/pages/address/list" });
+    return;
+  }
+  if (item.action === "favorite") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/favorite/list" });
     return;
   }
   if (item.action === "orders") {

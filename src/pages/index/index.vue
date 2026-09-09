@@ -119,9 +119,14 @@
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
-              <text v-if="item.multiSpec" class="from">起</text>
-              <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+              <view class="price-left">
+                <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
+                <text v-if="item.multiSpec" class="from">起</text>
+                <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+              </view>
+              <view class="cart-btn" @click.stop="onQuickAdd(item)">
+                <image class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
+              </view>
             </view>
           </view>
         </view>
@@ -155,9 +160,14 @@
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
             <view class="price-row">
-              <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
-              <text v-if="item.multiSpec" class="from">起</text>
-              <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+              <view class="price-left">
+                <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
+                <text v-if="item.multiSpec" class="from">起</text>
+                <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+              </view>
+              <view class="cart-btn" @click.stop="onQuickAdd(item)">
+                <image class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
+              </view>
             </view>
           </view>
         </view>
@@ -188,6 +198,7 @@ import { prefetchImage, prefetchImageField } from "@/utils/media";
 import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
+import { quickAddCart } from "@/composables/useQuickAddCart";
 
 const themeStore = useThemeStore();
 const userStore = useUserStore();
@@ -263,6 +274,18 @@ const heroTag = computed(() => themeStore.copy.heroTag || "今日精选");
 const heroTitle = computed(() => themeStore.copy.heroTitle || "品质好物 用心挑选");
 const heroSub = computed(() => themeStore.copy.heroSub || "点击查看商品详情");
 
+const TAB_ICON_PACKS: Record<string, string> = {
+  default: "/static/tab",
+  zhongqiu: "/static/tab/zhongqiu",
+  duanwu: "/static/tab/duanwu",
+};
+
+/** 与底部 Tab「购物车」未选中态同款浅色图标 */
+const cartIconSrc = computed(() => {
+  const pack = TAB_ICON_PACKS[themeStore.theme.code] || TAB_ICON_PACKS.default;
+  return `${pack}/cart.png`;
+});
+
 try {
   const info = uni.getSystemInfoSync();
   statusBarHeight.value = info.statusBarHeight || 20;
@@ -273,6 +296,18 @@ try {
 
 function toast(msg: string) {
   uni.showToast({ title: msg, icon: "none" });
+}
+
+const addingId = ref<number | null>(null);
+
+async function onQuickAdd(item: ProductCardVO) {
+  if (!item?.id || addingId.value != null) return;
+  addingId.value = item.id;
+  try {
+    await quickAddCart(item.id, !!item.multiSpec);
+  } finally {
+    addingId.value = null;
+  }
 }
 
 function goCategory() {
@@ -887,8 +922,31 @@ onShow(async () => {
 .price-row {
   margin-top: 8rpx;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10rpx;
+}
+
+.price-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.cart-btn {
+  flex-shrink: 0;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-icon {
+  width: 48rpx;
+  height: 48rpx;
 }
 
 .price {

@@ -58,9 +58,12 @@
               <view class="body">
                 <text class="name">{{ item.name }}</text>
                 <view class="price-row">
-                  <text class="price">¥{{ salePrice(item) }}</text>
-                  <text v-if="item.multiSpec" class="from">起</text>
-                  <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+                  <view class="price-left">
+                    <text class="price">¥{{ salePrice(item) }}</text>
+                    <text v-if="item.multiSpec" class="from">起</text>
+                    <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+                  </view>
+                  <goods-add-cart-btn :product-id="item.id" :multi-spec="!!item.multiSpec" />
                 </view>
               </view>
             </view>
@@ -102,6 +105,7 @@ import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
 import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/maintenance";
 import { fetchShopContact } from "@/api/shop";
+import GoodsAddCartBtn from "@/components/goods-add-cart-btn.vue";
 
 const categories = ref<CategoryNodeVO[]>([]);
 const active = ref(0);
@@ -408,8 +412,17 @@ onShow(load);
 
 .price-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   margin-top: 8rpx;
+  gap: 8rpx;
+}
+
+.price-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
 }
 
 .price {

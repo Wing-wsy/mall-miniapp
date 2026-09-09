@@ -20,7 +20,10 @@
       </view>
       <product-share-btn :product-id="product.id" :visible="canShare" />
     </view>
-    <view class="panel">
+    <view class="panel panel-info">
+      <view class="fav-btn" @click.stop="onToggleFavorite">
+        <text class="fav-icon" :class="{ on: favorited }">{{ favorited ? "★" : "☆" }}</text>
+      </view>
       <view class="price-row">
         <text class="price">¥{{ displayPrice }}</text>
         <text v-if="displayLinePrice" class="origin">¥{{ displayLinePrice }}</text>
@@ -122,6 +125,7 @@ import {
   type ProductSkuVO,
 } from "@/api/product";
 import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
+import { checkFavorite, toggleFavorite } from "@/api/favorite";
 import { ApiError } from "@/utils/request";
 import { isMaintenanceError } from "@/utils/maintenance";
 import { useUserStore } from "@/stores/user";
@@ -140,6 +144,8 @@ const selectedSellUnitId = ref<number | null>(null);
 const qty = ref(1);
 const adding = ref(false);
 const buying = ref(false);
+const favoriting = ref(false);
+const favorited = ref(false);
 const error = ref("");
 const cartItems = ref<CartItemVO[]>([]);
 const fromCartId = ref(0);
@@ -336,6 +342,48 @@ async function loadCartOccupancy() {
     cartItems.value = (res.data?.items || []).filter((item) => item.productId === productId);
   } catch {
     cartItems.value = [];
+  }
+}
+
+async function loadFavoriteStatus() {
+  favorited.value = false;
+  if (!userStore.isLogin || !product.value?.id) {
+    return;
+  }
+  try {
+    const res = await checkFavorite(product.value.id);
+    favorited.value = !!res.data?.favorited;
+  } catch {
+    favorited.value = false;
+  }
+}
+
+async function onToggleFavorite() {
+  if (!product.value?.id) {
+    return;
+  }
+  if (!userStore.isLogin) {
+    goLogin();
+    return;
+  }
+  if (favoriting.value) {
+    return;
+  }
+  favoriting.value = true;
+  try {
+    const res = await toggleFavorite(product.value.id);
+    favorited.value = !!res.data?.favorited;
+    toast(favorited.value ? "收藏成功" : "已取消收藏");
+  } catch (e: unknown) {
+    if (e instanceof ApiError && e.maintenance) {
+      return;
+    }
+    if (isMaintenanceError(e)) {
+      return;
+    }
+    toast(e instanceof Error ? e.message : "操作失败");
+  } finally {
+    favoriting.value = false;
   }
 }
 
@@ -540,6 +588,7 @@ onLoad((query) => {
       }
       initSelection(skuId, sellUnitId);
       await loadCartOccupancy();
+      await loadFavoriteStatus();
       if (queryQty > 0) {
         const max = maxQty.value || queryQty;
         qty.value = Math.min(queryQty, Math.max(1, max));
@@ -599,6 +648,33 @@ onLoad((query) => {
   padding: 28rpx;
   background: #fff;
   border-radius: 20rpx;
+}
+
+.panel-info {
+  position: relative;
+  padding-right: 72rpx;
+}
+
+.fav-btn {
+  position: absolute;
+  top: 20rpx;
+  right: 16rpx;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.fav-icon {
+  font-size: 44rpx;
+  line-height: 1;
+  color: #c0c4cc;
+}
+
+.fav-icon.on {
+  color: #ff5a3d;
 }
 
 .price-row {

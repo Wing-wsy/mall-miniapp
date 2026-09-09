@@ -5,7 +5,8 @@ import { MAINTENANCE_MESSAGE, notifyMaintenance } from "@/utils/maintenance";
 // export const BASE_URL = "http://192.168.10.122:9081";
 // export const BASE_URL = "http://192.168.1.14:9081";
 // 生产
-export const BASE_URL = "http://120.79.2.209";
+// export const BASE_URL = "http://120.79.2.209";
+export const BASE_URL = "https://api.lihego.cn";
 
 export interface ApiResult<T = unknown> {
   code: number;

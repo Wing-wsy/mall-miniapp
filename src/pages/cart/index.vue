@@ -18,6 +18,9 @@
         :class="{ invalid: !!item.invalidReason }"
         @click="goDetail(item)"
       >
+        <view class="remove" @click.stop="onRemove(item)">
+          <text class="remove-x">×</text>
+        </view>
         <view
           class="check"
           :class="{ on: isSelected(item), disabled: !!item.invalidReason }"
@@ -173,16 +176,7 @@ async function load() {
 async function changeQty(item: CartItemVO, delta: number) {
   const next = item.quantity + delta;
   if (next <= 0) {
-    try {
-      await deleteCart(item.id);
-      cartItems.value = cartItems.value.filter((x) => x.id !== item.id);
-      const nextSelected = new Set(selectedIds.value);
-      nextSelected.delete(item.id);
-      selectedIds.value = nextSelected;
-      await refreshBadge();
-    } catch (e: unknown) {
-      toast(e instanceof Error ? e.message : "删除失败");
-    }
+    await onRemove(item);
     return;
   }
   try {
@@ -199,6 +193,20 @@ async function changeQty(item: CartItemVO, delta: number) {
     await refreshBadge();
   } catch (e: unknown) {
     toast(e instanceof Error ? e.message : "修改失败");
+  }
+}
+
+async function onRemove(item: CartItemVO) {
+  try {
+    await deleteCart(item.id);
+    cartItems.value = cartItems.value.filter((x) => x.id !== item.id);
+    const nextSelected = new Set(selectedIds.value);
+    nextSelected.delete(item.id);
+    selectedIds.value = nextSelected;
+    await refreshBadge();
+    toast("已移除");
+  } catch (e: unknown) {
+    toast(e instanceof Error ? e.message : "删除失败");
   }
 }
 
@@ -288,6 +296,7 @@ onShow(() => {
 }
 
 .card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 20rpx;
@@ -295,6 +304,25 @@ onShow(() => {
   border-radius: 20rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
+}
+
+.remove {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  z-index: 2;
+  width: 44rpx;
+  height: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-x {
+  font-size: 36rpx;
+  line-height: 1;
+  color: #c4c4c4;
+  font-weight: 300;
 }
 
 .check {
@@ -352,6 +380,7 @@ onShow(() => {
   font-size: 28rpx;
   color: #1f2937;
   line-height: 1.4;
+  padding-right: 40rpx;
 }
 
 .spec {

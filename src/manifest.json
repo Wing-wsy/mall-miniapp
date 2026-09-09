@@ -1,6 +1,6 @@
 {
     "name" : "mall-miniapp",
-    "appid" : "",
+    "appid" : "wx4ba3388efef77c29",
     "description" : "Mall mini program frontend skeleton",
     "versionName" : "1.0.0",
     "versionCode" : "100",
@@ -50,7 +50,7 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx4ba3388efef77c29",
         "setting" : {
             "urlCheck" : false
         },
