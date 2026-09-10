@@ -32,7 +32,7 @@
             <view class="row">
               <text class="price">¥{{ money(item.price) }}</text>
               <view class="qty-box" @click.stop>
-                <text class="qty-btn" :class="{ disabled: qtyBusy || item.quantity <= 1 }" @click="changeItemQty(item, -1)">−</text>
+                <text class="qty-btn" :class="{ disabled: qtyBusy || item.quantity <= minSellQtyOf(item) }" @click="changeItemQty(item, -1)">−</text>
                 <text class="qty-num">{{ item.quantity }}{{ item.itemType === 2 ? "盒" : "" }}</text>
                 <text class="qty-btn" :class="{ disabled: qtyBusy }" @click="changeItemQty(item, 1)">+</text>
               </view>
@@ -546,7 +546,9 @@ async function changeItemQty(item: OrderItemVO, delta: number) {
     return;
   }
   const next = (item.quantity || 0) + delta;
-  if (next < 1) {
+  const floor = minSellQtyOf(item);
+  if (next < floor) {
+    uni.showToast({ title: `起订量至少 ${floor}`, icon: "none" });
     return;
   }
   qtyBusy.value = true;
@@ -593,6 +595,15 @@ function pickGroupCoupon(supplierId: number | null | undefined, id: number, coup
 
 function money(v: unknown) {
   return Number(v || 0).toFixed(2);
+}
+
+function minSellQtyOf(item: OrderItemVO) {
+  if (item.itemType === 2) {
+    return 1;
+  }
+  const minOrder = item.minOrderQty && item.minOrderQty > 0 ? item.minOrderQty : 1;
+  const convert = item.convertQty && item.convertQty > 0 ? item.convertQty : 1;
+  return Math.max(1, Math.ceil(minOrder / convert));
 }
 </script>
 

@@ -62,6 +62,7 @@ export interface ProductDetailVO {
   categoryPath?: string;
   festivalPaths?: string[];
   stock?: number;
+  minOrderQty?: number;
   baseSpecName?: string;
   attrs?: ProductAttrVO[];
   skus?: ProductSkuVO[];

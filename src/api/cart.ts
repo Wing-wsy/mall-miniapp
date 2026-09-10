@@ -18,6 +18,7 @@ export interface CartItemVO {
   sharePrice?: number | string | null;
   quantity: number;
   convertQty?: number;
+  minOrderQty?: number;
   sellableQty?: number;
   components?: { productName: string; specName?: string; attrText?: string; quantity: number }[];
   invalidReason?: string;

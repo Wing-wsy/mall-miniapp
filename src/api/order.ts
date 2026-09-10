@@ -17,6 +17,7 @@ export interface OrderItemVO {
   price: number | string;
   quantity: number;
   convertQty?: number;
+  minOrderQty?: number;
   amount: number | string;
   points?: number;
   components?: { productName: string; specName?: string; quantity: number }[];

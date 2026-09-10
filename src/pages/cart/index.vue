@@ -118,6 +118,15 @@ const total = computed(() => {
   return amount.toFixed(2);
 });
 
+function minSellQtyOf(item: CartItemVO) {
+  if (item.itemType === 2) {
+    return 1;
+  }
+  const minOrder = item.minOrderQty && item.minOrderQty > 0 ? item.minOrderQty : 1;
+  const convert = item.convertQty && item.convertQty > 0 ? item.convertQty : 1;
+  return Math.max(1, Math.ceil(minOrder / convert));
+}
+
 async function refreshBadge(n?: number) {
   const count = n ?? cartItems.value.reduce((sum, item) => sum + (item.quantity || 0), 0);
   try {
@@ -177,6 +186,11 @@ async function changeQty(item: CartItemVO, delta: number) {
   const next = item.quantity + delta;
   if (next <= 0) {
     await onRemove(item);
+    return;
+  }
+  const minSell = minSellQtyOf(item);
+  if (next < minSell) {
+    toast(`起订量至少 ${minSell}${item.sellUnitName || ""}，可点左上角移除`);
     return;
   }
   try {

@@ -78,6 +78,7 @@
       </view>
 
       <text class="meta">{{ stockHint }}</text>
+      <text v-if="minOrderHint" class="meta moq">{{ minOrderHint }}</text>
       <view class="qty-row">
         <text class="qty-label">数量</text>
         <view class="qty">
@@ -279,9 +280,21 @@ const maxQty = computed(() => {
   return Math.max(0, remainingSellable.value - existingQty.value);
 });
 
+const minOrderQty = computed(() => {
+  const n = product.value?.minOrderQty;
+  return n != null && n > 0 ? n : 1;
+});
+
+/** 当前售卖单位下的起订件数（向上取整） */
+const minQty = computed(() => {
+  const convert = convertOf(selectedUnit.value);
+  return Math.max(1, Math.ceil(minOrderQty.value / convert));
+});
+
 const canAdd = computed(() => {
   if (!selectedSku.value || remainingSellable.value <= 0) return false;
   if (sellUnits.value.length > 0 && !selectedUnit.value) return false;
+  if (minQty.value > maxQty.value) return false;
   return true;
 });
 
@@ -292,6 +305,19 @@ const convertHint = computed(() => {
     return "";
   }
   return `1${unit.name} = ${unit.convertQty}${baseName}`;
+});
+
+const minOrderHint = computed(() => {
+  if (minOrderQty.value <= 1) {
+    return "";
+  }
+  const baseName = product.value?.baseSpecName || "库存单位";
+  const unit = selectedUnit.value;
+  const unitName = unit?.name || "";
+  if (minQty.value > 1 && unitName) {
+    return `起订 ${minOrderQty.value}${baseName}（至少 ${minQty.value}${unitName}）`;
+  }
+  return `起订 ${minOrderQty.value}${baseName}`;
 });
 
 const stockHint = computed(() => {
@@ -312,7 +338,7 @@ watch([() => selectedSku.value?.id, selectedSellUnitId], (_next, prev) => {
   if (prev == null || (Array.isArray(prev) && prev[0] == null && prev[1] == null)) {
     return;
   }
-  qty.value = 1;
+  qty.value = minQty.value;
 });
 
 function selectAttrValue(attrId: number, valueId: number) {
@@ -321,7 +347,10 @@ function selectAttrValue(attrId: number, valueId: number) {
 
 function changeQty(delta: number) {
   const next = qty.value + delta;
-  if (next < 1) {
+  if (next < minQty.value) {
+    if (delta < 0) {
+      toast(`起订量至少 ${minQty.value}`);
+    }
     return;
   }
   if (next > maxQty.value) {
@@ -419,11 +448,15 @@ async function ensureReady() {
     return false;
   }
   if (!canAdd.value) {
-    toast("已售罄");
+    toast(minQty.value > maxQty.value ? `库存不足起订量（至少 ${minQty.value}）` : "已售罄");
     return false;
   }
   if (!userStore.isLogin) {
     goLogin();
+    return false;
+  }
+  if (qty.value < minQty.value) {
+    toast(`起订量至少 ${minQty.value}`);
     return false;
   }
   if (qty.value > maxQty.value) {
@@ -589,9 +622,12 @@ onLoad((query) => {
       initSelection(skuId, sellUnitId);
       await loadCartOccupancy();
       await loadFavoriteStatus();
+      const floor = minQty.value;
       if (queryQty > 0) {
-        const max = maxQty.value || queryQty;
-        qty.value = Math.min(queryQty, Math.max(1, max));
+        const max = Math.max(floor, maxQty.value || queryQty);
+        qty.value = Math.min(Math.max(queryQty, floor), max);
+      } else {
+        qty.value = floor;
       }
     })
     .catch((e: unknown) => {
@@ -758,6 +794,10 @@ onLoad((query) => {
   margin-top: 10rpx;
   font-size: 24rpx;
   color: #9ca3af;
+}
+
+.meta.moq {
+  color: #b45309;
 }
 
 .attr-block {
