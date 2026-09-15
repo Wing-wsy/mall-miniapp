@@ -55,6 +55,12 @@
       }
     },
     {
+      "path": "pages/goods/ppt-detail",
+      "style": {
+        "navigationBarTitleText": "商品详情"
+      }
+    },
+    {
       "path": "pages/favorite/list",
       "style": {
         "navigationBarTitleText": "我的收藏"
@@ -154,6 +160,12 @@
     },
     {
       "path": "pages/combo/detail",
+      "style": {
+        "navigationBarTitleText": "套装详情"
+      }
+    },
+    {
+      "path": "pages/combo/ppt-detail",
       "style": {
         "navigationBarTitleText": "套装详情"
       }
