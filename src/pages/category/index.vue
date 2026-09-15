@@ -57,6 +57,7 @@
               </view>
               <view class="body">
                 <text class="name">{{ item.name }}</text>
+                <text v-if="item.brandName" class="brand">{{ item.brandName }}</text>
                 <view class="price-row">
                   <view class="price-left">
                     <text class="price">¥{{ salePrice(item) }}</text>
@@ -408,6 +409,16 @@ onShow(load);
   color: #111827;
   line-height: 1.35;
   min-height: 64rpx;
+}
+
+.body .brand {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: #9ca3af;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .price-row {

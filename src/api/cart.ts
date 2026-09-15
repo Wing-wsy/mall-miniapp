@@ -70,6 +70,20 @@ export function deleteCart(id: number) {
   });
 }
 
+export interface CartPptExportVO {
+  fileName: string;
+  objectKey: string;
+  downloadUrl: string;
+}
+
+export function exportCartPpt(cartIds: number[]) {
+  return request<CartPptExportVO>({
+    url: "/api/app/cart/export-ppt",
+    method: "POST",
+    data: { cartIds },
+  });
+}
+
 export function cartItemLabel(item: {
   itemType?: number;
   attrText?: string;

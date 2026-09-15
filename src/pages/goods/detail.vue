@@ -29,6 +29,7 @@
         <text v-if="displayLinePrice" class="origin">¥{{ displayLinePrice }}</text>
       </view>
       <text class="name">{{ product.name }}</text>
+      <text v-if="product.brandName" class="brand">{{ product.brandName }}</text>
       <view v-if="canShare" class="share-row">
         <button class="share-chip" hover-class="none" open-type="share" :data-pid="String(product.id)">
           分享给好友
@@ -780,6 +781,13 @@ onLoad((query) => {
 .ship-tag.self {
   color: #ff5a3d;
   background: #fff1ed;
+}
+
+.brand {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 
 .subtitle {

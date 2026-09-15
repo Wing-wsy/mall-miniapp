@@ -1,5 +1,23 @@
 <template>
   <view class="page">
+    <view class="nav-wrap" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <view class="nav">
+        <text class="nav-title">购物车</text>
+        <view
+          v-if="!needLogin && cartItems.length"
+          class="export-btn"
+          :class="{ disabled: !selectedItems.length || exporting }"
+          :style="{ right: exportRight + 'px' }"
+          @click="onExportPpt"
+        >
+          <view class="export-icon" aria-label="导出PPT">
+            <view class="export-tray" />
+            <view class="export-arrow" />
+          </view>
+        </view>
+      </view>
+    </view>
+
     <view v-if="needLogin" class="empty">
       <text class="empty-title">登录后查看购物车</text>
       <text class="empty-desc">登录后同步商品，方便下单</text>
@@ -84,6 +102,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import {
   deleteCart,
+  exportCartPpt,
   fetchCartList,
   updateCartQty,
   cartItemLabel,
@@ -91,7 +110,7 @@ import {
 } from "@/api/cart";
 import { salePrice } from "@/utils/price";
 import { prefetchCoverUrls } from "@/utils/media";
-import { ApiError } from "@/utils/request";
+import { ApiError, BASE_URL } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 
 const userStore = useUserStore();
@@ -99,6 +118,21 @@ const cartItems = ref<CartItemVO[]>([]);
 const selectedIds = ref<Set<number>>(new Set());
 const loading = ref(false);
 const needLogin = ref(false);
+const exporting = ref(false);
+const statusBarHeight = ref(20);
+/** 导出图标距屏幕右边距离，避开微信胶囊 */
+const exportRight = ref(96);
+
+try {
+  const sys = uni.getSystemInfoSync();
+  statusBarHeight.value = sys.statusBarHeight || 20;
+  const menu = uni.getMenuButtonBoundingClientRect?.();
+  if (menu && menu.left) {
+    exportRight.value = Math.max(12, sys.windowWidth - menu.left + 8);
+  }
+} catch {
+  // ignore
+}
 
 const validItems = computed(() => cartItems.value.filter((item) => !item.invalidReason));
 
@@ -259,6 +293,69 @@ function checkout() {
   uni.navigateTo({ url: `/pages/order/confirm?cartIds=${ids}` });
 }
 
+function resolveDownloadUrl(url: string, objectKey?: string) {
+  if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+    return url;
+  }
+  if (objectKey) {
+    return `${BASE_URL}/api/app/file/download?objectKey=${encodeURIComponent(objectKey)}`;
+  }
+  if (url?.startsWith("/")) {
+    return `${BASE_URL}${url}`;
+  }
+  return url;
+}
+
+async function onExportPpt() {
+  if (exporting.value) {
+    return;
+  }
+  if (!selectedItems.value.length) {
+    toast("请先勾选商品");
+    return;
+  }
+  exporting.value = true;
+  uni.showLoading({ title: "生成中...", mask: true });
+  try {
+    const res = await exportCartPpt(selectedItems.value.map((item) => item.id));
+    const data = res.data;
+    if (!data?.downloadUrl && !data?.objectKey) {
+      throw new Error("未返回下载地址");
+    }
+    const downloadUrl = resolveDownloadUrl(data.downloadUrl, data.objectKey);
+    const filePath = await new Promise<string>((resolve, reject) => {
+      uni.downloadFile({
+        url: downloadUrl,
+        success: (r) => {
+          if (r.statusCode === 200 && r.tempFilePath) {
+            resolve(r.tempFilePath);
+          } else {
+            reject(new Error("下载失败"));
+          }
+        },
+        fail: (err) => reject(new Error(err.errMsg || "下载失败")),
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      uni.openDocument({
+        filePath,
+        showMenu: true,
+        fileType: "pptx",
+        success: () => resolve(),
+        fail: (err) => reject(new Error(err.errMsg || "打开失败")),
+      });
+    });
+  } catch (e: unknown) {
+    if (e instanceof ApiError && e.maintenance) {
+      return;
+    }
+    toast(e instanceof Error ? e.message : "导出失败");
+  } finally {
+    exporting.value = false;
+    uni.hideLoading();
+  }
+}
+
 function goDetail(item: CartItemVO) {
   if (item.comboId || item.itemType === 2) {
     if (!item.comboId) {
@@ -303,6 +400,85 @@ onShow(() => {
   min-height: 100vh;
   background: #f7f7f7;
   padding-bottom: 140rpx;
+}
+
+.nav-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
+}
+
+.nav {
+  position: relative;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.export-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.export-btn.disabled {
+  opacity: 0.35;
+}
+
+.export-icon {
+  position: relative;
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.export-tray {
+  position: absolute;
+  left: 4rpx;
+  right: 4rpx;
+  bottom: 2rpx;
+  height: 16rpx;
+  border: 3rpx solid #374151;
+  border-top: none;
+  border-radius: 0 0 4rpx 4rpx;
+  box-sizing: border-box;
+}
+
+.export-arrow {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 3rpx;
+  height: 18rpx;
+  margin-left: -1.5rpx;
+  background: #374151;
+}
+
+.export-arrow::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 12rpx;
+  height: 12rpx;
+  margin-left: -6rpx;
+  border-left: 3rpx solid #374151;
+  border-top: 3rpx solid #374151;
+  transform: rotate(45deg);
+  box-sizing: border-box;
 }
 
 .list {

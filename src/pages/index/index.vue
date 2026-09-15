@@ -118,6 +118,7 @@
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
+            <text v-if="item.brandName" class="goods-brand">{{ item.brandName }}</text>
             <view class="price-row">
               <view class="price-left">
                 <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
@@ -159,6 +160,7 @@
           </view>
           <view class="goods-body">
             <text class="goods-name">{{ item.name }}</text>
+            <text v-if="item.brandName" class="goods-brand">{{ item.brandName }}</text>
             <view class="price-row">
               <view class="price-left">
                 <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
@@ -917,6 +919,16 @@ onShow(async () => {
   line-height: 1.4;
   height: 72rpx;
   overflow: hidden;
+}
+
+.goods-brand {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .price-row {

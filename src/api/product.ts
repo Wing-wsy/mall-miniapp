@@ -51,6 +51,7 @@ export interface ProductDetailVO {
   name: string;
   subtitle?: string;
   coverUrl?: string;
+  brandName?: string;
   galleryUrls?: string[];
   price: number | string;
   originPrice?: number | string;
@@ -77,6 +78,7 @@ export interface ProductCardVO {
   name: string;
   subtitle?: string;
   coverUrl?: string;
+  brandName?: string;
   price: number | string;
   originPrice?: number | string;
   memberPrice?: number | string | null;

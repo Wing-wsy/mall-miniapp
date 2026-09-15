@@ -14,6 +14,7 @@
           </view>
           <view class="body">
           <text class="name">{{ item.name }}</text>
+          <text v-if="item.brandName" class="brand">{{ item.brandName }}</text>
           <view class="price-row">
             <view class="price-left">
               <text class="price">¥{{ salePrice(item) }}</text>
@@ -158,6 +159,16 @@ onLoad((query) => load((query || {}) as Record<string, string | undefined>));
   line-height: 1.4;
   height: 72rpx;
   overflow: hidden;
+}
+
+.brand {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .price-row {
