@@ -340,7 +340,7 @@ async function onExportPpt() {
       uni.openDocument({
         filePath,
         showMenu: true,
-        fileType: "pptx",
+        fileType: "pdf",
         success: () => resolve(),
         fail: (err) => reject(new Error(err.errMsg || "打开失败")),
       });

@@ -17,12 +17,22 @@
       </scroll-view>
 
       <scroll-view scroll-y class="main">
-        <view class="main-title">{{ viewing?.name }}</view>
+        <view class="main-head">
+          <view v-if="trail.length" class="back-btn" @click="popTrail">
+            <view class="back-icon" />
+          </view>
+          <text class="main-title">{{ viewing?.name }}</text>
+        </view>
         <view v-if="trail.length" class="crumb">
           <text class="crumb-link" @click="backToRoot">{{ current?.name }}</text>
           <template v-for="(node, i) in trail" :key="node.id">
             <text class="crumb-sep">/</text>
-            <text class="crumb-link" @click="trail = trail.slice(0, i + 1)">{{ node.name }}</text>
+            <text
+              v-if="i < trail.length - 1"
+              class="crumb-link"
+              @click="trail = trail.slice(0, i + 1)"
+            >{{ node.name }}</text>
+            <text v-else class="crumb-current">{{ node.name }}</text>
           </template>
         </view>
 
@@ -206,6 +216,10 @@ function backToRoot() {
   trail.value = [];
 }
 
+function popTrail() {
+  trail.value = trail.value.slice(0, -1);
+}
+
 function onTapChild(item: CategoryNodeVO) {
   trail.value = [...trail.value, item];
 }
@@ -273,12 +287,39 @@ onShow(load);
   box-sizing: border-box;
 }
 
+.main-head {
+  display: flex;
+  align-items: center;
+  min-height: 48rpx;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
+
+.back-btn {
+  width: 48rpx;
+  height: 48rpx;
+  margin-left: -8rpx;
+  margin-right: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.back-icon {
+  width: 16rpx;
+  height: 16rpx;
+  margin-left: 6rpx;
+  border-left: 4rpx solid #111827;
+  border-bottom: 4rpx solid #111827;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+
 .main-title {
   font-size: 30rpx;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 16rpx;
-  padding: 0 8rpx;
 }
 
 .crumb {
@@ -298,6 +339,10 @@ onShow(load);
 .crumb-sep {
   margin: 0 8rpx;
   color: #d1d5db;
+}
+
+.crumb-current {
+  color: #9ca3af;
 }
 
 .list {
