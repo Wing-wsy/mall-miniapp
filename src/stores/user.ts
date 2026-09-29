@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { fetchProfile, loginByCode, logoutApi, bindPhone, type MemberVO } from "@/api/auth";
+import { clearCartBadge } from "@/utils/cartBadge";
 
 export const useUserStore = defineStore("user", () => {
   const token = ref(uni.getStorageSync("mall_app_token") || "");
@@ -36,16 +37,22 @@ export const useUserStore = defineStore("user", () => {
     userInfo.value = null;
     uni.removeStorageSync("mall_app_token");
     uni.removeStorageSync("mall_app_user");
+    clearCartBadge();
   }
 
   async function loginWithWxCode() {
-    const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
-      uni.login({
-        provider: "weixin",
-        success: resolve,
-        fail: reject,
+    let loginRes: UniApp.LoginRes;
+    try {
+      loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+        uni.login({
+          provider: "weixin",
+          success: resolve,
+          fail: reject,
+        });
       });
-    });
+    } catch (err: any) {
+      throw new Error(err?.errMsg || "uni.login 失败");
+    }
     if (!loginRes.code) {
       throw new Error("未获取到微信 code");
     }

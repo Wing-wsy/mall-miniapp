@@ -167,14 +167,21 @@ export function previewOrder(
   cartIds: number[],
   couponId?: number | null,
   addressId?: number | null,
-  groupCoupons?: { supplierId?: number | null; couponId?: number | null }[]
+  groupCoupons?: { supplierId?: number | null; couponId?: number | null }[],
+  planId?: number | null
 ) {
   const data: {
-    cartIds: number[];
+    cartIds?: number[];
+    planId?: number;
     couponId?: number;
     addressId?: number;
     groupCoupons?: { supplierId?: number | null; couponId?: number | null }[];
-  } = { cartIds };
+  } = {};
+  if (planId) {
+    data.planId = planId;
+  } else {
+    data.cartIds = cartIds;
+  }
   if (couponId != null) {
     data.couponId = couponId;
   }
@@ -192,7 +199,8 @@ export function previewOrder(
 }
 
 export function createOrder(data: {
-  cartIds: number[];
+  cartIds?: number[];
+  planId?: number;
   addressId: number;
   remark?: string;
   couponId?: number | null;

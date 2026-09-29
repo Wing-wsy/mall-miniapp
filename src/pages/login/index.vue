@@ -22,7 +22,7 @@
         <button class="ghost-btn" :loading="loading" @click="onMockEnter">用测试手机号登录</button>
       </view>
       <text v-if="step === 'phone' && !forcePhone" class="skip" @click="goBack">暂不授权，稍后再说</text>
-      <text class="tip">开发者工具里「微信一键登录」会进已有账号。模拟普通用户请填一个未在会员名单里的新手机号。</text>
+      <text class="tip">开发者工具里「微信一键登录」走正式微信登录。模拟普通用户请填一个未在会员名单里的新手机号（仅后端 mock 时可用）。</text>
     </view>
   </view>
 </template>
@@ -70,7 +70,16 @@ async function onLogin() {
   try {
     try {
       await userStore.loginWithWxCode();
-    } catch (e) {
+    } catch (e: any) {
+      // 仅 uni.login 拿不到 code 时回退本地 mock；接口返回的「invalid code」不要再拿假 code 重试
+      const msg = String(e?.message || e?.errMsg || "");
+      const wxCodeUnavailable =
+        msg.includes("未获取到微信 code") ||
+        /login:fail/i.test(msg) ||
+        /uni\.login/i.test(msg);
+      if (!wxCodeUnavailable) {
+        throw e;
+      }
       await userStore.loginWithMockCode();
     }
     if (userStore.userInfo?.phone) {
@@ -80,7 +89,9 @@ async function onLogin() {
     }
     step.value = "phone";
   } catch (err: any) {
-    uni.showToast({ title: err?.message || "登录失败", icon: "none" });
+    if (!err?.maintenance) {
+      uni.showToast({ title: err?.message || "登录失败", icon: "none" });
+    }
   } finally {
     loading.value = false;
   }

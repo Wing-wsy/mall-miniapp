@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onLaunch, onShow } from "@dcloudio/uni-app";
 import { useThemeStore } from "@/stores/theme";
-import { fetchCartCount } from "@/api/cart";
 import { fetchShopContact } from "@/api/shop";
+import { showCartBadge } from "@/utils/cartBadge";
 import { syncMaintenanceFromContact } from "@/utils/maintenance";
 
 const themeStore = useThemeStore();
@@ -75,22 +75,7 @@ onShow(async (options) => {
   consumeShare(options);
   await themeStore.loadCurrent();
   await refreshMaintenanceState();
-  const token = uni.getStorageSync("mall_app_token");
-  if (!token) {
-    uni.removeTabBarBadge({ index: 2 });
-    return;
-  }
-  try {
-    const res = await fetchCartCount();
-    const n = res.data?.totalQuantity || 0;
-    if (n > 0) {
-      uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
-    } else {
-      uni.removeTabBarBadge({ index: 2 });
-    }
-  } catch {
-    uni.removeTabBarBadge({ index: 2 });
-  }
+  showCartBadge();
 });
 </script>
 

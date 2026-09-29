@@ -89,6 +89,7 @@ import { addCart } from "@/api/cart";
 import { prefetchCoverUrls, prefetchImageField } from "@/utils/media";
 import { useUserStore } from "@/stores/user";
 import { isMaintenanceError } from "@/utils/maintenance";
+import { bumpCartBadge } from "@/utils/cartBadge";
 
 const userStore = useUserStore();
 const combo = ref<ComboVO | null>(null);
@@ -175,6 +176,7 @@ async function onAddCart() {
   adding.value = true;
   try {
     await addCart(undefined, qty.value, combo.value.id);
+    bumpCartBadge();
     uni.showToast({ title: "已加入购物车", icon: "success" });
   } catch (e: any) {
     if (!isMaintenanceError(e)) {

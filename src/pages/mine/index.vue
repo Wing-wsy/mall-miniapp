@@ -53,6 +53,12 @@
     <view v-if="contactVisible" class="cs-mask" @click="contactVisible = false" @touchmove.stop.prevent>
       <view class="cs-dialog" @click.stop>
         <text class="cs-title">联系客服</text>
+        <view v-if="contact.companyName || contact.companyLogo" class="cs-company-block">
+          <view v-if="contact.companyName || contact.companyLogo" class="cs-company">
+            <image v-if="contact.companyLogo" class="cs-logo" :src="contact.companyLogo" mode="aspectFit" />
+            <text v-if="contact.companyName" class="cs-company-name">{{ contact.companyName }}</text>
+          </view>
+        </view>
         <view v-if="contact.phone" class="cs-row">
           <view class="cs-meta">
             <text class="cs-label">客服电话</text>
@@ -94,7 +100,7 @@ const balanceText = computed(() => Number(userStore.userInfo?.balance ?? 0).toFi
 
 const emptyCounts = { unpaid: 0, waitShip: 0, waitRecv: 0, done: 0 };
 const counts = ref({ ...emptyCounts });
-const contact = ref({ phone: "", email: "" });
+const contact = ref({ phone: "", email: "", companyName: "", companyLogo: "", companyDesc: "" });
 const contactVisible = ref(false);
 const showSupplier = ref(false);
 /** 店铺功能开关：未拉到配置前默认全关，避免闪一下再隐藏 */
@@ -107,6 +113,7 @@ const menus = computed(() => {
   const list = [
     { name: "收货地址", action: "address" },
     { name: "我的收藏", action: "favorite" },
+    { name: "我的方案", action: "plan" },
     { name: "我的订单", action: "orders" },
     { name: "退款/售后", action: "aftersale" },
   ];
@@ -215,6 +222,14 @@ function onMenu(item: { name: string; action: string }) {
       return;
     }
     uni.navigateTo({ url: "/pages/favorite/list" });
+    return;
+  }
+  if (item.action === "plan") {
+    if (!userStore.isLogin) {
+      goLogin();
+      return;
+    }
+    uni.navigateTo({ url: "/pages/plan/list" });
     return;
   }
   if (item.action === "orders") {
@@ -335,6 +350,9 @@ async function loadContact() {
     contact.value = {
       phone: res.data?.phone || "",
       email: res.data?.email || "",
+      companyName: res.data?.companyName || "",
+      companyLogo: res.data?.companyLogo || "",
+      companyDesc: res.data?.companyDesc || "",
     };
     voucherEnabled.value = res.data?.voucherEnabled === true;
     pointsEnabled.value = res.data?.pointsEnabled === true;
@@ -358,7 +376,13 @@ async function onContact() {
       const res = await fetchShopContact();
       phone = res.data?.phone || "";
       email = res.data?.email || "";
-      contact.value = { phone, email };
+      contact.value = {
+        phone,
+        email,
+        companyName: res.data?.companyName || "",
+        companyLogo: res.data?.companyLogo || "",
+        companyDesc: res.data?.companyDesc || "",
+      };
     } catch {
       uni.showToast({ title: "客服信息加载失败", icon: "none" });
       return;
@@ -366,7 +390,7 @@ async function onContact() {
       contactLoading = false;
     }
   }
-  if (!phone && !email) {
+  if (!phone && !email && !contact.value.companyName && !contact.value.companyLogo && !contact.value.companyDesc) {
     uni.showToast({ title: "暂未配置客服", icon: "none" });
     return;
   }
@@ -542,6 +566,38 @@ async function onLogout() {
   font-weight: 700;
   color: #111827;
   margin-bottom: 28rpx;
+}
+.cs-company-block {
+  padding: 4rpx 0 20rpx;
+  margin-bottom: 8rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+.cs-company {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+.cs-logo {
+  width: 112rpx;
+  height: 112rpx;
+  flex-shrink: 0;
+  background: #f7f8fa;
+  border-radius: 16rpx;
+}
+.cs-company-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+.cs-company-desc {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #6b7280;
 }
 .cs-row {
   display: flex;

@@ -67,6 +67,19 @@
       }
     },
     {
+      "path": "pages/plan/list",
+      "style": {
+        "navigationBarTitleText": "我的方案"
+      }
+    },
+    {
+      "path": "pages/plan/detail",
+      "style": {
+        "navigationBarTitleText": "方案详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/goods/list",
       "style": {
         "navigationBarTitleText": "商品列表",

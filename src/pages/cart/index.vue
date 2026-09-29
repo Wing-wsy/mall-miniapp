@@ -109,6 +109,7 @@ import {
   type CartItemVO,
 } from "@/api/cart";
 import { salePrice } from "@/utils/price";
+import { clearCartBadge } from "@/utils/cartBadge";
 import { prefetchCoverUrls } from "@/utils/media";
 import { ApiError, BASE_URL } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
@@ -161,25 +162,11 @@ function minSellQtyOf(item: CartItemVO) {
   return Math.max(1, Math.ceil(minOrder / convert));
 }
 
-async function refreshBadge(n?: number) {
-  const count = n ?? cartItems.value.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  try {
-    if (count > 0) {
-      uni.setTabBarBadge({ index: 2, text: count > 99 ? "99+" : String(count) });
-    } else {
-      uni.removeTabBarBadge({ index: 2 });
-    }
-  } catch {
-    // tab 未就绪时忽略
-  }
-}
-
 async function load() {
   if (!userStore.isLogin) {
     needLogin.value = true;
     cartItems.value = [];
     selectedIds.value = new Set();
-    refreshBadge(0);
     return;
   }
   needLogin.value = false;
@@ -201,13 +188,11 @@ async function load() {
     cartItems.value = next;
     selectedIds.value = nextSelected;
     await prefetchCoverUrls(cartItems.value);
-    await refreshBadge(res.data?.totalQuantity || 0);
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {
       needLogin.value = true;
       cartItems.value = [];
       selectedIds.value = new Set();
-      refreshBadge(0);
       return;
     }
     toast(e instanceof Error ? e.message : "加载失败");
@@ -238,7 +223,6 @@ async function changeQty(item: CartItemVO, delta: number) {
         selectedIds.value = nextSelected;
       }
     }
-    await refreshBadge();
   } catch (e: unknown) {
     toast(e instanceof Error ? e.message : "修改失败");
   }
@@ -251,7 +235,6 @@ async function onRemove(item: CartItemVO) {
     const nextSelected = new Set(selectedIds.value);
     nextSelected.delete(item.id);
     selectedIds.value = nextSelected;
-    await refreshBadge();
     toast("已移除");
   } catch (e: unknown) {
     toast(e instanceof Error ? e.message : "删除失败");
@@ -391,6 +374,7 @@ function toast(msg: string) {
 }
 
 onShow(() => {
+  clearCartBadge();
   load();
 });
 </script>

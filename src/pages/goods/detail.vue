@@ -126,7 +126,7 @@ import {
   type ProductSellUnitVO,
   type ProductSkuVO,
 } from "@/api/product";
-import { addCart, fetchCartCount, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
+import { addCart, fetchCartList, updateCartQty, type CartItemVO } from "@/api/cart";
 import { checkFavorite, toggleFavorite } from "@/api/favorite";
 import { ApiError } from "@/utils/request";
 import { isMaintenanceError } from "@/utils/maintenance";
@@ -134,6 +134,7 @@ import { useUserStore } from "@/stores/user";
 import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
+import { bumpCartBadge } from "@/utils/cartBadge";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 import { createShareLink } from "@/api/share";
@@ -421,20 +422,6 @@ function goLogin() {
   uni.navigateTo({ url: "/pages/login/index" });
 }
 
-async function refreshBadge() {
-  try {
-    const res = await fetchCartCount();
-    const n = res.data?.totalQuantity || 0;
-    if (n > 0) {
-      uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
-    } else {
-      uni.removeTabBarBadge({ index: 2 });
-    }
-  } catch {
-    uni.removeTabBarBadge({ index: 2 });
-  }
-}
-
 function toast(msg: string) {
   uni.showToast({ title: msg, icon: "none" });
 }
@@ -478,10 +465,10 @@ async function onAddCart() {
       toast("已更新购物车");
     } else {
       await addCart(selectedSku.value.id, qty.value, undefined, selectedUnit.value?.id);
+      bumpCartBadge();
       toast("已加入购物车");
     }
     await loadCartOccupancy();
-    await refreshBadge();
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {
       goLogin();
@@ -519,7 +506,6 @@ async function onBuyNow() {
       return;
     }
     await loadCartOccupancy();
-    await refreshBadge();
     uni.navigateTo({ url: `/pages/order/confirm?cartIds=${cartId}` });
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {

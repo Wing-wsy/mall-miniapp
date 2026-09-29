@@ -4,6 +4,9 @@ export interface ShopContactVO {
   phone: string;
   email: string;
   notice?: string;
+  companyName?: string;
+  companyLogo?: string;
+  companyDesc?: string;
   voucherEnabled?: boolean;
   pointsEnabled?: boolean;
   couponEnabled?: boolean;

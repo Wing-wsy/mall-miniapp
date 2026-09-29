@@ -1,22 +1,9 @@
-import { addCart, fetchCartCount } from "@/api/cart";
+import { addCart } from "@/api/cart";
 import { fetchProductDetail } from "@/api/product";
 import { ApiError } from "@/utils/request";
 import { isMaintenanceError } from "@/utils/maintenance";
 import { useUserStore } from "@/stores/user";
-
-async function refreshBadge() {
-  try {
-    const res = await fetchCartCount();
-    const n = res.data?.totalQuantity || 0;
-    if (n > 0) {
-      uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
-    } else {
-      uni.removeTabBarBadge({ index: 2 });
-    }
-  } catch {
-    // ignore
-  }
-}
+import { bumpCartBadge } from "@/utils/cartBadge";
 
 function goLogin() {
   uni.navigateTo({ url: "/pages/login/index" });
@@ -61,8 +48,8 @@ export async function quickAddCart(productId: number, _multiSpec?: boolean) {
       return;
     }
     await addCart(sku.id, 1, undefined, unit.id);
+    bumpCartBadge();
     toast("已添加购物车", "success");
-    await refreshBadge();
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {
       goLogin();

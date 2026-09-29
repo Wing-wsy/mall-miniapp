@@ -200,7 +200,8 @@ import {
   type OrderPreviewGroupVO,
 } from "@/api/order";
 import { previewVoucher, redeemVoucher } from "@/api/voucher";
-import { fetchCartCount, cartItemLabel, updateCartQty } from "@/api/cart";
+import { cartItemLabel, updateCartQty } from "@/api/cart";
+import { updatePlanItem } from "@/api/plan";
 import { fetchShopContact } from "@/api/shop";
 import type { CouponVO } from "@/api/coupon";
 import { prefetchCoverUrls } from "@/utils/media";
@@ -208,6 +209,7 @@ import { publicShipFrom } from "@/utils/supplier";
 import { ApiError } from "@/utils/request";
 
 const cartIds = ref<number[]>([]);
+const planId = ref(0);
 const isPoints = ref(false);
 const isVoucher = ref(false);
 const voucherCode = ref("");
@@ -282,6 +284,10 @@ onLoad((query) => {
     .split(",")
     .map((id) => Number(id))
     .filter((id) => id > 0);
+  planId.value = Number((query && query.planId) || 0);
+  if (planId.value) {
+    cartIds.value = [];
+  }
 });
 
 onShow(() => {
@@ -326,7 +332,7 @@ async function loadPreview(silent = false) {
       uni.showToast({ title: "积分功能暂未开放", icon: "none" });
       return;
     }
-  } else if (!cartIds.value.length) {
+  } else if (!cartIds.value.length && !planId.value) {
     uni.showToast({ title: "请选择商品", icon: "none" });
     return;
   }
@@ -351,7 +357,8 @@ async function loadPreview(silent = false) {
             cartIds.value,
             selectedCouponId.value,
             stored || undefined,
-            groupCouponsPayload()
+            groupCouponsPayload(),
+            planId.value || undefined
           );
     items.value = res.data?.items || [];
     groups.value = res.data?.groups || [];
@@ -432,7 +439,14 @@ async function onSubmit() {
     return;
   }
   if (!previewOk.value) {
-    uni.showToast({ title: isPoints.value || isVoucher.value ? "暂无法兑换，请返回重试" : "有商品无法结算，请返回购物车", icon: "none" });
+    uni.showToast({
+      title: isPoints.value || isVoucher.value
+        ? "暂无法兑换，请返回重试"
+        : planId.value
+          ? "有商品无法结算，请返回方案"
+          : "有商品无法结算，请返回购物车",
+      icon: "none",
+    });
     return;
   }
   submitting.value = true;
@@ -452,7 +466,8 @@ async function onSubmit() {
             remark: remark.value || undefined,
           })
         : await createOrder({
-          cartIds: cartIds.value,
+          cartIds: planId.value ? undefined : cartIds.value,
+          planId: planId.value || undefined,
           addressId: address.value.id,
           remark: remark.value || undefined,
           couponId: selectedCouponId.value ?? 0,
@@ -461,19 +476,6 @@ async function onSubmit() {
     uni.removeStorageSync("mall_order_address_id");
     if (isVoucher.value) {
       uni.removeStorageSync("mall_voucher_code");
-    }
-    if (!isPoints.value && !isVoucher.value) {
-      try {
-        const countRes = await fetchCartCount();
-        const n = countRes.data?.totalQuantity || 0;
-        if (n > 0) {
-          uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
-        } else {
-          uni.removeTabBarBadge({ index: 2 });
-        }
-      } catch {
-        // ignore
-      }
     }
     const created = isPoints.value || isVoucher.value
       ? [res.data]
@@ -553,19 +555,12 @@ async function changeItemQty(item: OrderItemVO, delta: number) {
   }
   qtyBusy.value = true;
   try {
-    await updateCartQty(cartId, next);
-    await loadPreview(true);
-    try {
-      const countRes = await fetchCartCount();
-      const n = countRes.data?.totalQuantity || 0;
-      if (n > 0) {
-        uni.setTabBarBadge({ index: 2, text: n > 99 ? "99+" : String(n) });
-      } else {
-        uni.removeTabBarBadge({ index: 2 });
-      }
-    } catch {
-      // tab 未就绪时忽略
+    if (planId.value) {
+      await updatePlanItem(cartId, { quantity: next });
+    } else {
+      await updateCartQty(cartId, next);
     }
+    await loadPreview(true);
   } catch (e: unknown) {
     const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "修改数量失败";
     uni.showToast({ title: msg, icon: "none" });

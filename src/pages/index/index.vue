@@ -13,9 +13,27 @@
       scroll-y
       class="scroll"
       :style="{ height: scrollHeight }"
+      :scroll-top="scrollTop"
+      :scroll-with-animation="scrollWithAnimation"
       lower-threshold="120"
+      @scroll="onScroll"
       @scrolltolower="onScrollToLower"
     >
+      <view v-if="picking" class="plan-bar-anchor" :style="planBarPx ? { height: planBarPx + 'px' } : undefined">
+        <view
+          class="plan-bar"
+          :class="{ pinned: planPinned }"
+          :style="planPinned ? { top: planPinTop + 'px' } : undefined"
+        >
+          <view class="plan-bar-main">
+            <text class="plan-bar-label">正在添加到</text>
+            <text class="plan-bar-name">{{ picking.name }}</text>
+          </view>
+          <text class="plan-bar-detail" @click="goCurrentPlan">详情</text>
+          <text class="plan-bar-action" @click="switchPlanVisible = true">切换</text>
+          <text class="plan-bar-action" @click="exitPicking">退出</text>
+        </view>
+      </view>
       <view v-if="notice" class="horn">
         <text class="horn-icon">📢</text>
         <view class="horn-body">
@@ -46,6 +64,21 @@
             </view>
         </swiper-item>
       </swiper>
+
+      <view
+        v-if="contact.companyName || contact.companyLogo"
+        class="company-bar"
+        @click="openCompanyContact"
+      >
+        <image
+          v-if="contact.companyLogo"
+          class="company-bar-logo"
+          :src="contact.companyLogo"
+          mode="aspectFit"
+        />
+        <view class="company-bar-name">{{ contact.companyName }}</view>
+        <text class="company-bar-arrow">›</text>
+      </view>
 
       <swiper
         v-if="entryPages.length"
@@ -90,6 +123,87 @@
         <text class="coupon-entry-btn">去领取</text>
       </view>
 
+      <view v-if="rootCategories.length" class="root-cats-anchor">
+        <view
+          class="root-cats-pin"
+          :class="{ pinned: catsPinned }"
+          :style="catsPinned ? { top: catsPinTop + 'px', background: themeStore.pageBg } : undefined"
+        >
+          <view class="root-cats-bar">
+            <view
+              class="root-cat root-cat-fixed"
+              :class="{ active: !catHighlightId }"
+              :style="!catHighlightId ? selectedCatStyle : { background: themeStore.pageBg }"
+              @click="showHomeFeed"
+            >
+              <text :style="!catHighlightId ? { color: themeStore.primary } : undefined">推荐</text>
+            </view>
+            <scroll-view
+              scroll-x
+              enable-flex
+              class="root-cats"
+              :show-scrollbar="false"
+              :style="{ width: catsScrollWidth }"
+            >
+              <view class="root-cats-row">
+                <view
+                  v-for="item in rootCategories"
+                  :key="item.id"
+                  class="root-cat"
+                  :class="{ active: catHighlightId === item.id }"
+                  :style="catHighlightId === item.id ? selectedCatStyle : undefined"
+                  @click="onRootCategory(item)"
+                >
+                  <text :style="catHighlightId === item.id ? { color: themeStore.primary } : undefined">{{ item.name }}</text>
+                </view>
+              </view>
+            </scroll-view>
+          </view>
+        </view>
+      </view>
+
+      <template v-if="selectedRootId">
+        <view v-if="!categoryGoods.length" class="hot-empty">{{ categoryLoading ? "加载中..." : "暂无商品" }}</view>
+        <view v-else class="goods-grid">
+          <view
+            v-for="item in categoryGoods"
+            :key="'cat-' + item.id"
+            class="goods-card"
+            @click="goDetail(item.id)"
+          >
+            <view class="goods-cover" :style="{ background: themeStore.tokens.primarySoft }">
+              <image
+                v-if="item.coverUrl"
+                class="goods-cover-img"
+                :src="item.coverUrl"
+                mode="aspectFill"
+              />
+              <view v-else class="cover-fallback">
+                <text class="cover-text">{{ (item.name || "").slice(0, 2) }}</text>
+              </view>
+              <text v-if="publicShipFrom(item)" class="ship-badge" :class="{ self: item.selfOperated }">{{ publicShipFrom(item) }}</text>
+              <product-share-btn :product-id="item.id" :visible="canShare" />
+            </view>
+            <view class="goods-body">
+              <text class="goods-name">{{ item.name }}</text>
+              <text v-if="item.brandName" class="goods-brand">{{ item.brandName }}</text>
+              <view class="price-row">
+                <view class="price-left">
+                  <text class="price" :style="{ color: themeStore.tokens.price || themeStore.primary }">¥{{ salePrice(item) }}</text>
+                  <text v-if="item.multiSpec" class="from">起</text>
+                  <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
+                </view>
+                <view class="cart-btn" :class="{ picking: !!picking }" @click.stop="onCartOrPlan(item)">
+                  <text v-if="picking" class="plan-add">加入方案</text>
+                  <image v-else class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </template>
+
+      <template v-else>
       <view class="section-head">
         <text class="section-title">热卖推荐</text>
         <text class="section-more" @click="goCategory">全部</text>
@@ -125,8 +239,9 @@
                 <text v-if="item.multiSpec" class="from">起</text>
                 <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
               </view>
-              <view class="cart-btn" @click.stop="onQuickAdd(item)">
-                <image class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
+              <view class="cart-btn" :class="{ picking: !!picking }" @click.stop="onCartOrPlan(item)">
+                <text v-if="picking" class="plan-add">加入方案</text>
+                <image v-else class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
               </view>
             </view>
           </view>
@@ -167,8 +282,9 @@
                 <text v-if="item.multiSpec" class="from">起</text>
                 <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
               </view>
-              <view class="cart-btn" @click.stop="onQuickAdd(item)">
-                <image class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
+              <view class="cart-btn" :class="{ picking: !!picking }" @click.stop="onCartOrPlan(item)">
+                <text v-if="picking" class="plan-add">加入方案</text>
+                <image v-else class="cart-icon" :src="cartIconSrc" mode="aspectFit" />
               </view>
             </view>
           </view>
@@ -179,17 +295,85 @@
         <text v-else-if="catalogHasMore">上拉加载更多</text>
         <text v-else>没有更多了</text>
       </view>
+      </template>
       <view class="safe-bottom" />
     </scroll-view>
+
+    <view class="float-actions">
+      <view v-if="showBackTop" class="float-btn" @click="backToTop">
+        <view class="back-top-arrow" :style="{ borderColor: themeStore.primary }" />
+      </view>
+      <view class="float-btn" @click="onContact(false)">
+        <view class="cs-icon">
+          <view class="cs-band" :style="{ borderColor: themeStore.primary }" />
+          <view class="cs-ears">
+            <view class="cs-ear" :style="{ background: themeStore.primary }" />
+            <view class="cs-ear" :style="{ background: themeStore.primary }" />
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="contactVisible" class="cs-mask" @click="contactVisible = false" @touchmove.stop.prevent>
+      <view class="cs-dialog" @click.stop>
+        <text class="cs-title">联系客服</text>
+        <view v-if="contact.companyName || contact.companyLogo || contact.companyDesc" class="cs-company-block">
+          <view v-if="contact.companyName || contact.companyLogo" class="cs-company">
+            <image v-if="contact.companyLogo" class="cs-logo" :src="contact.companyLogo" mode="aspectFit" />
+            <text v-if="contact.companyName" class="cs-company-name">{{ contact.companyName }}</text>
+          </view>
+          <text v-if="contactShowDesc && contact.companyDesc" class="cs-company-desc">{{ contact.companyDesc }}</text>
+        </view>
+        <view v-if="contact.phone" class="cs-row">
+          <view class="cs-meta">
+            <text class="cs-label">客服电话</text>
+            <text class="cs-value">{{ contact.phone }}</text>
+          </view>
+          <text class="cs-action" :style="{ color: themeStore.primary }" @click="callPhone">拨打</text>
+        </view>
+        <view v-if="contact.email" class="cs-row">
+          <view class="cs-meta">
+            <text class="cs-label">客服邮箱</text>
+            <text class="cs-value">{{ contact.email }}</text>
+          </view>
+          <text class="cs-action" :style="{ color: themeStore.primary }" @click="copyEmail">复制</text>
+        </view>
+        <button class="cs-close" @click="contactVisible = false">关闭</button>
+      </view>
+    </view>
+
+    <view v-if="switchPlanVisible" class="cs-mask" @click="switchPlanVisible = false" @touchmove.stop.prevent>
+      <view class="cs-dialog" @click.stop>
+        <text class="cs-title">切换方案</text>
+        <view
+          v-for="item in planOptions"
+          :key="item.id"
+          class="plan-switch-row"
+          @click="choosePlan(item)"
+        >
+          <text class="plan-switch-name">{{ item.name }}</text>
+          <text v-if="picking && picking.id === item.id" class="plan-switch-on">当前</text>
+        </view>
+        <button class="cs-close" @click="switchPlanVisible = false">关闭</button>
+      </view>
+    </view>
+
+    <plan-add-sheet
+      :visible="sheetVisible"
+      :product-id="sheetProductId"
+      @close="sheetVisible = false"
+      @confirm="onPlanConfirm"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, getCurrentInstance, nextTick, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { fetchBannerList, type BannerVO } from "@/api/banner";
 import { fetchNavEntryList, type NavEntryVO } from "@/api/navEntry";
-import { fetchHotProducts, fetchProductFeed, type ProductCardVO } from "@/api/product";
+import { fetchHotProducts, fetchProductFeed, fetchProductListByCategory, type ProductCardVO } from "@/api/product";
+import { fetchProductCategoryTree, type CategoryNodeVO } from "@/api/category";
 import { fetchCouponActivities, type CouponActivityVO } from "@/api/coupon";
 import { fetchShopContact } from "@/api/shop";
 import { useThemeStore } from "@/stores/theme";
@@ -201,12 +385,30 @@ import { guardMaintenanceNavigate, syncMaintenanceFromContact } from "@/utils/ma
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 import { quickAddCart } from "@/composables/useQuickAddCart";
+import { addPlanItem, fetchPlanDetail, fetchPlanList, type PlanSummaryVO } from "@/api/plan";
+import { clearPickingPlan, getPickingPlan, setPickingPlan } from "@/utils/planPicking";
+import PlanAddSheet from "@/components/plan-add-sheet.vue";
 
 const themeStore = useThemeStore();
 const userStore = useUserStore();
+const pageInstance = getCurrentInstance();
 const { canShare } = useProductShare();
 const statusBarHeight = ref(20);
 const scrollHeight = ref("100vh");
+const scrollTop = ref<number | undefined>(undefined);
+const scrollWithAnimation = ref(true);
+const showBackTop = ref(false);
+const catsPinned = ref(false);
+const catsPinTop = ref(0);
+const planPinned = ref(false);
+const planPinTop = ref(0);
+const planBarPx = ref(0);
+const catsScrollWidth = ref("calc(100vw - 200rpx)");
+let catsAnchorTop = 0;
+let catsMeasured = false;
+let catsMeasureAt = 0;
+let currentScrollTop = 0;
+let backTopThreshold = 500;
 const banners = ref<BannerVO[]>([]);
 const goods = ref<ProductCardVO[]>([]);
 const catalog = ref<ProductCardVO[]>([]);
@@ -216,9 +418,19 @@ const catalogHasMore = ref(true);
 const catalogPage = ref(0);
 const CATALOG_PAGE_SIZE = 10;
 let catalogSeq = 0;
+const rootCategories = ref<CategoryNodeVO[]>([]);
+const selectedRootId = ref<number | null>(null);
+const catHighlightId = ref<number | null>(null);
+const categoryGoods = ref<ProductCardVO[]>([]);
+const categoryLoading = ref(false);
+let categorySeq = 0;
 const entries = ref<NavEntryVO[]>([]);
 const claimable = ref<CouponActivityVO[]>([]);
 const notice = ref("");
+const contact = ref({ phone: "", email: "", companyName: "", companyLogo: "", companyDesc: "" });
+const contactVisible = ref(false);
+const contactShowDesc = ref(false);
+let contactLoading = false;
 const voucherEnabled = ref(false);
 const pointsEnabled = ref(false);
 const couponEnabled = ref(false);
@@ -271,6 +483,29 @@ const pageStyle = computed(() => ({
   background: themeStore.pageBg,
 }));
 
+function mixWhite(hex: string, ratio: number) {
+  const raw = hex.replace("#", "").trim();
+  const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  const n = Number.parseInt(full, 16);
+  if (!Number.isFinite(n) || full.length !== 6) {
+    return hex;
+  }
+  const mix = (channel: number) => Math.round(channel * ratio + 255 * (1 - ratio));
+  const r = mix((n >> 16) & 255);
+  const g = mix((n >> 8) & 255);
+  const b = mix(n & 255);
+  const channelHex = (channel: number) => channel.toString(16).padStart(2, "0");
+  return `#${channelHex(r)}${channelHex(g)}${channelHex(b)}`;
+}
+
+const selectedCatStyle = computed(() => {
+  const backgroundColor = mixWhite(themeStore.primary, 0.42);
+  return {
+    color: themeStore.primary,
+    backgroundColor,
+  };
+});
+
 const heroImageUrl = ref("");
 const heroTag = computed(() => themeStore.copy.heroTag || "今日精选");
 const heroTitle = computed(() => themeStore.copy.heroTitle || "品质好物 用心挑选");
@@ -292,8 +527,125 @@ try {
   const info = uni.getSystemInfoSync();
   statusBarHeight.value = info.statusBarHeight || 20;
   scrollHeight.value = `calc(100vh - ${statusBarHeight.value + 56}px)`;
+  backTopThreshold = Math.max(400, Math.round((info.windowHeight || 700) * 0.8));
 } catch (e) {
   // ignore
+}
+
+function measureCatsAnchor() {
+  const proxy = pageInstance?.proxy;
+  const widthQuery = proxy ? uni.createSelectorQuery().in(proxy as never) : uni.createSelectorQuery();
+  widthQuery
+    .select(".root-cats-bar")
+    .boundingClientRect()
+    .select(".root-cat-fixed")
+    .boundingClientRect()
+    .exec((res) => {
+      const bar = res?.[0] as { width?: number } | null;
+      const fixed = res?.[1] as { width?: number } | null;
+      if (!bar?.width || !fixed?.width) {
+        return;
+      }
+      const gap = uni.upx2px(16);
+      const width = Math.floor(bar.width - fixed.width - gap);
+      if (width > 40) {
+        catsScrollWidth.value = `${width}px`;
+      }
+    });
+  if (catsPinned.value) {
+    return;
+  }
+  const query = proxy ? uni.createSelectorQuery().in(proxy as never) : uni.createSelectorQuery();
+  query
+    .select(".scroll")
+    .boundingClientRect()
+    .select(".root-cats-anchor")
+    .boundingClientRect()
+    .exec((res) => {
+      const scrollBox = res?.[0] as { top?: number } | null;
+      const anchor = res?.[1] as { top?: number } | null;
+      if (!scrollBox || !anchor || scrollBox.top == null || anchor.top == null) {
+        return;
+      }
+      catsPinTop.value = scrollBox.top + planPinOffset();
+      catsAnchorTop = anchor.top - scrollBox.top + currentScrollTop;
+      catsMeasured = true;
+      syncCatsPin();
+    });
+}
+
+function planPinOffset() {
+  return picking.value && planBarPx.value > 0 ? planBarPx.value : 0;
+}
+
+function measurePlanBar() {
+  if (!picking.value) {
+    return;
+  }
+  const proxy = pageInstance?.proxy;
+  const query = proxy ? uni.createSelectorQuery().in(proxy as never) : uni.createSelectorQuery();
+  query
+    .select(".scroll")
+    .boundingClientRect()
+    .select(".plan-bar")
+    .boundingClientRect()
+    .exec((res) => {
+      const scrollBox = res?.[0] as { top?: number } | null;
+      const bar = res?.[1] as { height?: number } | null;
+      if (scrollBox?.top != null) {
+        planPinTop.value = scrollBox.top;
+      }
+      if (bar?.height) {
+        planBarPx.value = bar.height;
+      }
+      syncPlanPin();
+    });
+}
+
+function syncPlanPin() {
+  const next = !!picking.value && currentScrollTop > 1;
+  if (next !== planPinned.value) {
+    planPinned.value = next;
+  }
+}
+
+function syncCatsPin() {
+  if (!catsMeasured) {
+    return;
+  }
+  const next = currentScrollTop + 1 >= catsAnchorTop;
+  if (next !== catsPinned.value) {
+    catsPinned.value = next;
+  }
+}
+
+function onScroll(e: { detail?: { scrollTop?: number } }) {
+  currentScrollTop = Number(e.detail?.scrollTop || 0);
+  const next = currentScrollTop > backTopThreshold;
+  if (next !== showBackTop.value) {
+    showBackTop.value = next;
+  }
+  const now = Date.now();
+  if (!catsPinned.value && now - catsMeasureAt > 300) {
+    catsMeasureAt = now;
+    measurePlanBar();
+    measureCatsAnchor();
+    return;
+  }
+  syncPlanPin();
+  syncCatsPin();
+}
+
+function backToTop() {
+  showBackTop.value = false;
+  scrollWithAnimation.value = true;
+  scrollTop.value = currentScrollTop + 1;
+  nextTick(() => {
+    scrollTop.value = 0;
+    setTimeout(() => {
+      scrollTop.value = undefined;
+    }, 350);
+  });
 }
 
 function toast(msg: string) {
@@ -301,6 +653,79 @@ function toast(msg: string) {
 }
 
 const addingId = ref<number | null>(null);
+const picking = ref<{ id: number; name: string } | null>(null);
+const planOptions = ref<PlanSummaryVO[]>([]);
+const switchPlanVisible = ref(false);
+const sheetVisible = ref(false);
+const sheetProductId = ref(0);
+const planAdding = ref(false);
+
+async function loadPicking() {
+  const id = getPickingPlan();
+  if (!id || !userStore.isLogin) {
+    picking.value = null;
+    planOptions.value = [];
+    return;
+  }
+  try {
+    const [detail, list] = await Promise.all([fetchPlanDetail(id), fetchPlanList()]);
+    if (!detail.data?.id) {
+      clearPickingPlan();
+      picking.value = null;
+      return;
+    }
+    picking.value = { id: detail.data.id, name: detail.data.name };
+    planOptions.value = list.data || [];
+    nextTick(() => measurePlanBar());
+  } catch {
+    clearPickingPlan();
+    picking.value = null;
+    planOptions.value = [];
+  }
+}
+
+function goCurrentPlan() {
+  if (!picking.value) return;
+  uni.navigateTo({ url: `/pages/plan/detail?id=${picking.value.id}` });
+}
+
+function exitPicking() {
+  clearPickingPlan();
+  picking.value = null;
+  planPinned.value = false;
+  switchPlanVisible.value = false;
+  sheetVisible.value = false;
+}
+
+function choosePlan(item: PlanSummaryVO) {
+  setPickingPlan(item.id);
+  picking.value = { id: item.id, name: item.name };
+  switchPlanVisible.value = false;
+}
+
+function onCartOrPlan(item: ProductCardVO) {
+  if (picking.value) {
+    if (!item?.id) return;
+    sheetProductId.value = item.id;
+    sheetVisible.value = true;
+    return;
+  }
+  onQuickAdd(item);
+}
+
+async function onPlanConfirm(payload: { skuId: number; sellUnitId: number; quantity: number }) {
+  if (!picking.value || planAdding.value) return;
+  planAdding.value = true;
+  try {
+    await addPlanItem(picking.value.id, payload);
+    sheetVisible.value = false;
+    uni.showToast({ title: "已加入方案", icon: "success" });
+  } catch (e: unknown) {
+    uni.showToast({ title: e instanceof Error ? e.message : "加入失败", icon: "none" });
+  } finally {
+    planAdding.value = false;
+  }
+}
 
 async function onQuickAdd(item: ProductCardVO) {
   if (!item?.id || addingId.value != null) return;
@@ -505,7 +930,69 @@ async function loadCatalog(reset: boolean) {
 }
 
 function onScrollToLower() {
+  if (selectedRootId.value) {
+    return;
+  }
   loadCatalog(false);
+}
+
+async function loadRootCategories() {
+  try {
+    const res = await fetchProductCategoryTree();
+    rootCategories.value = res.data || [];
+    nextTick(() => measureCatsAnchor());
+    if (selectedRootId.value && !rootCategories.value.some((item) => item.id === selectedRootId.value)) {
+      selectedRootId.value = null;
+      catHighlightId.value = null;
+      categoryGoods.value = [];
+    }
+  } catch {
+    rootCategories.value = [];
+  }
+}
+
+function showHomeFeed() {
+  if (!selectedRootId.value && !catHighlightId.value) {
+    return;
+  }
+  categorySeq += 1;
+  catHighlightId.value = null;
+  selectedRootId.value = null;
+  categoryLoading.value = false;
+}
+
+async function onRootCategory(item: CategoryNodeVO) {
+  if (catHighlightId.value === item.id) {
+    showHomeFeed();
+    return;
+  }
+  const seq = ++categorySeq;
+  catHighlightId.value = item.id;
+  categoryLoading.value = true;
+  try {
+    const res = await fetchProductListByCategory(item.id);
+    if (seq !== categorySeq) {
+      return;
+    }
+    const list = res.data || [];
+    await Promise.all(list.map((goods) => prefetchImageField(goods, "coverUrl")));
+    if (seq !== categorySeq) {
+      return;
+    }
+    categoryGoods.value = list;
+    categoryLoading.value = false;
+    selectedRootId.value = item.id;
+  } catch (e: unknown) {
+    if (seq !== categorySeq) {
+      return;
+    }
+    catHighlightId.value = selectedRootId.value;
+    toast(e instanceof Error ? e.message : "加载失败");
+  } finally {
+    if (seq === categorySeq) {
+      categoryLoading.value = false;
+    }
+  }
 }
 
 async function loadNavEntries() {
@@ -531,16 +1018,78 @@ async function loadClaimable() {
   }
 }
 
+async function openCompanyContact() {
+  await onContact(true);
+}
+
+async function onContact(showDesc = false) {
+  if (contactLoading) {
+    return;
+  }
+  contactShowDesc.value = showDesc === true;
+  let phone = contact.value.phone;
+  let email = contact.value.email;
+  if (!phone && !email) {
+    contactLoading = true;
+    try {
+      const res = await fetchShopContact();
+      phone = res.data?.phone || "";
+      email = res.data?.email || "";
+      contact.value = {
+        phone,
+        email,
+        companyName: res.data?.companyName || "",
+        companyLogo: res.data?.companyLogo || "",
+        companyDesc: res.data?.companyDesc || "",
+      };
+    } catch {
+      toast("客服信息加载失败");
+      return;
+    } finally {
+      contactLoading = false;
+    }
+  }
+  if (!phone && !email && !contact.value.companyName && !contact.value.companyLogo && !contact.value.companyDesc) {
+    toast("暂未配置客服");
+    return;
+  }
+  contactVisible.value = true;
+}
+
+function callPhone() {
+  const phone = (contact.value.phone || "").trim();
+  if (!phone) {
+    return;
+  }
+  uni.makePhoneCall({ phoneNumber: phone });
+}
+
+function copyEmail() {
+  const email = (contact.value.email || "").trim();
+  if (!email) {
+    return;
+  }
+  uni.setClipboardData({ data: email });
+}
+
 async function loadNotice() {
   try {
     const res = await fetchShopContact();
     notice.value = (res.data?.notice || "").trim();
+    contact.value = {
+      phone: res.data?.phone || "",
+      email: res.data?.email || "",
+      companyName: res.data?.companyName || "",
+      companyLogo: res.data?.companyLogo || "",
+      companyDesc: res.data?.companyDesc || "",
+    };
     voucherEnabled.value = res.data?.voucherEnabled === true;
     pointsEnabled.value = res.data?.pointsEnabled === true;
     couponEnabled.value = res.data?.couponEnabled === true;
     syncMaintenanceFromContact(res.data);
   } catch {
     notice.value = "";
+    contact.value = { phone: "", email: "", companyName: "", companyLogo: "", companyDesc: "" };
     voucherEnabled.value = false;
     pointsEnabled.value = false;
     couponEnabled.value = false;
@@ -560,10 +1109,12 @@ onShow(async () => {
   }
   loadBanners();
   loadNavEntries();
+  loadRootCategories();
   loadHot();
   loadCatalog(true);
   await loadNotice();
   loadClaimable();
+  loadPicking();
 });
 </script>
 
@@ -700,9 +1251,45 @@ onShow(async () => {
   opacity: 0.9;
 }
 
+.company-bar {
+  margin: 20rpx 28rpx 0;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.company-bar-logo {
+  width: 88rpx;
+  height: 88rpx;
+  flex-shrink: 0;
+  border-radius: 16rpx;
+  background: #f7f8fa;
+}
+
+.company-bar-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.company-bar-arrow {
+  flex-shrink: 0;
+  font-size: 36rpx;
+  line-height: 1;
+  color: #c4c4c4;
+}
+
 .entry-swiper {
-  margin: 28rpx;
-  height: 400rpx;
+  margin: 20rpx 28rpx 8rpx;
+  height: 340rpx;
   background: #fff;
   border-radius: 24rpx;
 }
@@ -818,6 +1405,62 @@ onShow(async () => {
   background: #ff5a3d;
   color: #fff;
   font-size: 24rpx;
+}
+
+.root-cats-anchor {
+  height: 100rpx;
+  margin-bottom: 8rpx;
+}
+
+.root-cats-pin.pinned {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 12;
+}
+
+.root-cats-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  height: 100rpx;
+  padding-left: 28rpx;
+  box-sizing: border-box;
+}
+
+.root-cat-fixed {
+  flex: none;
+  margin-right: 16rpx;
+}
+
+.root-cats {
+  flex: none;
+  height: 100rpx;
+  white-space: nowrap;
+}
+
+.root-cats-row {
+  display: inline-flex;
+  align-items: center;
+  height: 100rpx;
+  padding-right: 28rpx;
+  gap: 16rpx;
+}
+
+.root-cat {
+  flex-shrink: 0;
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  color: #6b7280;
+  line-height: 42rpx;
+}
+
+.root-cat.active {
+  font-weight: 700;
+  background-color: #f6c9a6;
 }
 
 .section-head {
@@ -956,6 +1599,98 @@ onShow(async () => {
   justify-content: center;
 }
 
+.cart-btn.picking {
+  width: auto;
+  height: 48rpx;
+  padding: 0 16rpx;
+  border-radius: 24rpx;
+  background: #ff5a3d;
+}
+
+.plan-add {
+  color: #fff;
+  font-size: 22rpx;
+  white-space: nowrap;
+}
+
+.plan-bar-anchor {
+  height: 88rpx;
+  margin-bottom: 16rpx;
+}
+
+.plan-bar {
+  padding: 16rpx 24rpx;
+  background: #fff1ee;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  box-sizing: border-box;
+}
+
+.plan-bar.pinned {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 13;
+}
+
+.plan-bar-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.plan-bar-label {
+  color: #6b7280;
+  font-size: 30rpx;
+  flex-shrink: 0;
+}
+
+.plan-bar-name {
+  color: #ff5a3d;
+  font-size: 34rpx;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.plan-bar-detail {
+  flex-shrink: 0;
+  padding: 8rpx 22rpx;
+  border-radius: 999rpx;
+  background: #ff5a3d;
+  color: #fff;
+  font-size: 28rpx;
+  line-height: 1.3;
+}
+
+.plan-bar-action {
+  color: #ff5a3d;
+  font-size: 30rpx;
+  flex-shrink: 0;
+}
+
+.plan-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.plan-switch-name {
+  font-size: 28rpx;
+  color: #1f2937;
+}
+
+.plan-switch-on {
+  font-size: 22rpx;
+  color: #ff5a3d;
+}
+
 .cart-icon {
   width: 48rpx;
   height: 48rpx;
@@ -985,5 +1720,174 @@ onShow(async () => {
 
 .safe-bottom {
   height: 40rpx;
+}
+
+.float-actions {
+  position: fixed;
+  right: 28rpx;
+  bottom: calc(32rpx + 100rpx + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.float-btn {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(31, 41, 55, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cs-icon {
+  width: 40rpx;
+  height: 36rpx;
+}
+
+.cs-band {
+  width: 26rpx;
+  height: 16rpx;
+  margin: 0 auto;
+  border: 4rpx solid #ff5a3d;
+  border-bottom: none;
+  border-radius: 16rpx 16rpx 0 0;
+  box-sizing: border-box;
+}
+
+.cs-ears {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -4rpx;
+}
+
+.cs-ear {
+  width: 10rpx;
+  height: 16rpx;
+  border-radius: 4rpx;
+  background: #ff5a3d;
+}
+
+.cs-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.cs-dialog {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 36rpx 28rpx;
+}
+
+.cs-title {
+  display: block;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 28rpx;
+}
+
+.cs-company-block {
+  padding: 4rpx 0 20rpx;
+  margin-bottom: 8rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.cs-company {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.cs-logo {
+  width: 112rpx;
+  height: 112rpx;
+  flex-shrink: 0;
+  background: #f7f8fa;
+  border-radius: 16rpx;
+}
+
+.cs-company-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.cs-company-desc {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.cs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+
+.cs-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.cs-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+.cs-value {
+  font-size: 28rpx;
+  color: #1f2937;
+  word-break: break-all;
+}
+
+.cs-action {
+  flex-shrink: 0;
+  color: #ff5a3d;
+  font-size: 26rpx;
+}
+
+.cs-close {
+  margin-top: 28rpx;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 38rpx;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 28rpx;
+}
+
+.back-top-arrow {
+  width: 18rpx;
+  height: 18rpx;
+  margin-top: 8rpx;
+  border-top: 4rpx solid #ff5a3d;
+  border-left: 4rpx solid #ff5a3d;
+  transform: rotate(45deg);
 }
 </style>
