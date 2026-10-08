@@ -1,6 +1,13 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { fetchProfile, loginByCode, logoutApi, bindPhone, type MemberVO } from "@/api/auth";
+import {
+  fetchProfile,
+  loginByCode,
+  logoutApi,
+  bindPhone,
+  updateProfile,
+  type MemberVO,
+} from "@/api/auth";
 import { clearCartBadge } from "@/utils/cartBadge";
 
 export const useUserStore = defineStore("user", () => {
@@ -96,6 +103,12 @@ export const useUserStore = defineStore("user", () => {
     return data;
   }
 
+  async function saveProfile(payload: { nickname?: string; avatarUrl?: string }) {
+    const { data } = await updateProfile(payload);
+    setUserInfo(data);
+    return data;
+  }
+
   async function logout() {
     try {
       if (token.value) {
@@ -118,6 +131,7 @@ export const useUserStore = defineStore("user", () => {
     loginWithMockCode,
     bindWxPhone,
     refreshProfile,
+    saveProfile,
     logout,
   };
 });

@@ -36,6 +36,12 @@
       }
     },
     {
+      "path": "pages/profile/edit",
+      "style": {
+        "navigationBarTitleText": "编辑资料"
+      }
+    },
+    {
       "path": "pages/address/list",
       "style": {
         "navigationBarTitleText": "收货地址"

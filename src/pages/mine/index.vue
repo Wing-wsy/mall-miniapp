@@ -3,7 +3,8 @@
     <view class="header">
       <view class="status-bar" :style="{ height: statusBarHeight + 'px' }" />
       <view class="profile" @click="onProfileClick">
-        <view class="avatar">{{ avatarText }}</view>
+        <image v-if="avatarUrl" class="avatar avatar-img" :src="avatarUrl" mode="aspectFill" />
+        <view v-else class="avatar">{{ avatarText }}</view>
         <view class="meta">
           <view class="name-row">
             <text class="name">{{ displayName }}</text>
@@ -146,8 +147,13 @@ const displayName = computed(() =>
 );
 const levelName = computed(() => userStore.userInfo?.level?.name || "");
 const needPhone = computed(() => userStore.isLogin && !userStore.userInfo?.phone);
+const avatarUrl = computed(() => userStore.userInfo?.avatarUrl || "");
 
-const avatarText = computed(() => (userStore.isLogin ? "微" : "登"));
+const avatarText = computed(() => {
+  if (!userStore.isLogin) return "登";
+  const name = userStore.userInfo?.nickname || "微";
+  return name.slice(0, 1);
+});
 
 onShow(() => {
   loadContact();
@@ -180,7 +186,9 @@ function goLogin() {
 function onProfileClick() {
   if (!userStore.isLogin) {
     goLogin();
+    return;
   }
+  uni.navigateTo({ url: "/pages/profile/edit" });
 }
 
 function toast(msg: string) {
@@ -447,6 +455,9 @@ async function onLogout() {
   font-size: 40rpx;
   font-weight: 700;
   flex-shrink: 0;
+}
+.avatar-img {
+  background: rgba(255, 255, 255, 0.35);
 }
 .level-badge {
   padding: 4rpx 12rpx;

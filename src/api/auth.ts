@@ -53,6 +53,14 @@ export function fetchProfile() {
   });
 }
 
+export function updateProfile(payload: { nickname?: string; avatarUrl?: string }) {
+  return request<MemberVO>({
+    url: "/api/app/auth/profile",
+    method: "PUT",
+    data: payload,
+  });
+}
+
 export function logoutApi() {
   return request<null>({
     url: "/api/app/auth/logout",
