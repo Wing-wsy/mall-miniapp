@@ -254,8 +254,10 @@ onLoad(async (query) => {
 
 .detail-img {
   width: 100%;
-  margin-top: 16rpx;
-  border-radius: 12rpx;
+  margin: 0;
+  padding: 0;
+  display: block;
+  vertical-align: top;
 }
 
 .tip {

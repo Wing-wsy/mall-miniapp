@@ -360,7 +360,9 @@ onLoad((query) => {
 .detail-img {
   display: block;
   width: 100%;
-  margin-top: 12rpx;
+  margin: 0;
+  padding: 0;
+  vertical-align: top;
 }
 .bottom-bar {
   position: fixed;
