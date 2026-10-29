@@ -113,6 +113,7 @@ import { clearCartBadge } from "@/utils/cartBadge";
 import { prefetchCoverUrls } from "@/utils/media";
 import { ApiError, BASE_URL } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
+import { markCheckoutEntry } from "@/utils/track";
 
 const userStore = useUserStore();
 const cartItems = ref<CartItemVO[]>([]);
@@ -273,6 +274,7 @@ function checkout() {
     return;
   }
   const ids = selectedItems.value.map((item) => item.id).join(",");
+  markCheckoutEntry("cart");
   uni.navigateTo({ url: `/pages/order/confirm?cartIds=${ids}` });
 }
 

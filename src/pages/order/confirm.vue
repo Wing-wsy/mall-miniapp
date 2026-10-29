@@ -207,6 +207,7 @@ import type { CouponVO } from "@/api/coupon";
 import { prefetchCoverUrls } from "@/utils/media";
 import { publicShipFrom } from "@/utils/supplier";
 import { ApiError } from "@/utils/request";
+import { consumeCheckoutEntry, track } from "@/utils/track";
 
 const cartIds = ref<number[]>([]);
 const planId = ref(0);
@@ -267,16 +268,19 @@ onLoad((query) => {
   const mode = String((query && query.mode) || "");
   isPoints.value = mode === "points";
   isVoucher.value = mode === "voucher";
+  const marked = consumeCheckoutEntry();
   if (isPoints.value) {
     uni.setNavigationBarTitle({ title: "确认兑换" });
     productId.value = Number((query && query.productId) || 0);
     skuId.value = Number((query && query.skuId) || 0);
     quantity.value = Math.max(1, Number((query && query.qty) || 1));
+    track("checkout_start", { entry: "points" });
     return;
   }
   if (isVoucher.value) {
     uni.setNavigationBarTitle({ title: "确认兑换" });
     voucherCode.value = String(uni.getStorageSync("mall_voucher_code") || (query && query.code) || "");
+    track("checkout_start", { entry: "voucher" });
     return;
   }
   const raw = (query && query.cartIds) || "";
@@ -287,7 +291,11 @@ onLoad((query) => {
   planId.value = Number((query && query.planId) || 0);
   if (planId.value) {
     cartIds.value = [];
+    track("checkout_start", { entry: "plan" });
+    return;
   }
+  const entry = marked === "buy_now" ? "buy_now" : "cart";
+  track("checkout_start", { entry });
 });
 
 onShow(() => {

@@ -90,6 +90,7 @@ import { prefetchCoverUrls, prefetchImageField } from "@/utils/media";
 import { useUserStore } from "@/stores/user";
 import { isMaintenanceError } from "@/utils/maintenance";
 import { bumpCartBadge } from "@/utils/cartBadge";
+import { markCheckoutEntry, track } from "@/utils/track";
 
 const userStore = useUserStore();
 const combo = ref<ComboVO | null>(null);
@@ -149,6 +150,7 @@ async function load(id: number) {
     const res = await fetchComboDetail(id);
     combo.value = res.data;
     if (combo.value) {
+      track("combo_view", { comboId: id });
       await prefetchImageField(combo.value, "galleryUrls");
       await prefetchImageField(combo.value, "detailImageUrls");
       await prefetchImageField(combo.value, "coverUrl");
@@ -177,6 +179,7 @@ async function onAddCart() {
   try {
     await addCart(undefined, qty.value, combo.value.id);
     bumpCartBadge();
+    track("add_cart", { comboId: combo.value.id, source: "combo" });
     uni.showToast({ title: "已加入购物车", icon: "success" });
   } catch (e: any) {
     if (!isMaintenanceError(e)) {
@@ -198,6 +201,8 @@ async function onBuy() {
   try {
     const res = await addCart(undefined, qty.value, combo.value.id);
     const cartId = res.data?.id;
+    track("buy_now", { comboId: combo.value.id, source: "combo" });
+    markCheckoutEntry("buy_now");
     uni.navigateTo({ url: `/pages/order/confirm?cartIds=${cartId}` });
   } catch (e: any) {
     if (!isMaintenanceError(e)) {

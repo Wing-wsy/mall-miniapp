@@ -21,7 +21,7 @@
               <text v-if="item.multiSpec" class="from">起</text>
               <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
             </view>
-            <goods-add-cart-btn :product-id="item.id" :multi-spec="!!item.multiSpec" />
+            <goods-add-cart-btn :product-id="item.id" :multi-spec="!!item.multiSpec" source="list" />
           </view>
         </view>
       </view>

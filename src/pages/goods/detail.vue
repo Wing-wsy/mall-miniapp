@@ -135,6 +135,7 @@ import { linePrice, salePrice } from "@/utils/price";
 import { publicShipFrom } from "@/utils/supplier";
 import { prefetchImageField } from "@/utils/media";
 import { bumpCartBadge } from "@/utils/cartBadge";
+import { markCheckoutEntry, track } from "@/utils/track";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
 import { createShareLink } from "@/api/share";
@@ -466,6 +467,9 @@ async function onAddCart() {
     } else {
       await addCart(selectedSku.value.id, qty.value, undefined, selectedUnit.value?.id);
       bumpCartBadge();
+      if (product.value?.id) {
+        track("add_cart", { productId: product.value.id, source: "detail" });
+      }
       toast("已加入购物车");
     }
     await loadCartOccupancy();
@@ -506,6 +510,10 @@ async function onBuyNow() {
       return;
     }
     await loadCartOccupancy();
+    if (product.value?.id) {
+      track("buy_now", { productId: product.value.id, source: "detail" });
+    }
+    markCheckoutEntry("buy_now");
     uni.navigateTo({ url: `/pages/order/confirm?cartIds=${cartId}` });
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {
@@ -595,6 +603,7 @@ onLoad((query) => {
         return;
       }
       error.value = "";
+      track("product_view", { productId: id });
       // 先展示详情，图片预取失败不阻断
       try {
         await prefetchImageField(product.value, "coverUrl");

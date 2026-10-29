@@ -60,7 +60,7 @@
                 <text v-if="item.multiSpec" class="from">起</text>
                 <text v-if="linePrice(item)" class="origin">¥{{ linePrice(item) }}</text>
               </view>
-              <goods-add-cart-btn :product-id="item.id" :multi-spec="!!item.multiSpec" />
+              <goods-add-cart-btn :product-id="item.id" :multi-spec="!!item.multiSpec" source="search" />
             </view>
           </view>
         </view>
@@ -87,6 +87,7 @@ import { useThemeStore } from "@/stores/theme";
 import ProductShareBtn from "@/components/product-share-btn.vue";
 import GoodsAddCartBtn from "@/components/goods-add-cart-btn.vue";
 import { useProductShare } from "@/composables/useProductShare";
+import { track } from "@/utils/track";
 
 const HISTORY_KEY = "mall_search_history";
 const HISTORY_MAX = 3;
@@ -264,6 +265,9 @@ async function load(reset: boolean) {
     list.value = reset ? chunk : list.value.concat(chunk);
     page.value = nextPage;
     hasMore.value = !!res.data?.hasMore;
+    if (reset) {
+      track("search", { keyword: kw, resultCount: Number(res.data?.total ?? chunk.length) });
+    }
   } catch (e: any) {
     if (current !== seq) {
       return;

@@ -731,7 +731,7 @@ async function onQuickAdd(item: ProductCardVO) {
   if (!item?.id || addingId.value != null) return;
   addingId.value = item.id;
   try {
-    await quickAddCart(item.id, !!item.multiSpec);
+    await quickAddCart(item.id, !!item.multiSpec, "home");
   } finally {
     addingId.value = null;
   }

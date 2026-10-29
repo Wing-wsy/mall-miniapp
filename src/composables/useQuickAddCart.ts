@@ -4,6 +4,7 @@ import { ApiError } from "@/utils/request";
 import { isMaintenanceError } from "@/utils/maintenance";
 import { useUserStore } from "@/stores/user";
 import { bumpCartBadge } from "@/utils/cartBadge";
+import { track } from "@/utils/track";
 
 function goLogin() {
   uni.navigateTo({ url: "/pages/login/index" });
@@ -14,7 +15,11 @@ function toast(title: string, icon: "none" | "success" = "none") {
 }
 
 /** 列表页快捷加购：默认规格/单位直接加购，留在当前页 */
-export async function quickAddCart(productId: number, _multiSpec?: boolean) {
+export async function quickAddCart(
+  productId: number,
+  _multiSpec?: boolean,
+  source: string = "list",
+) {
   if (!productId) {
     return;
   }
@@ -49,6 +54,7 @@ export async function quickAddCart(productId: number, _multiSpec?: boolean) {
     }
     await addCart(sku.id, 1, undefined, unit.id);
     bumpCartBadge();
+    track("add_cart", { productId, source });
     toast("已添加购物车", "success");
   } catch (e: unknown) {
     if (e instanceof ApiError && e.code === 401) {

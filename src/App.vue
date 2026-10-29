@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onLaunch, onShow } from "@dcloudio/uni-app";
+import { onHide, onLaunch, onShow } from "@dcloudio/uni-app";
 import { useThemeStore } from "@/stores/theme";
 import { fetchShopContact } from "@/api/shop";
 import { showCartBadge } from "@/utils/cartBadge";
 import { syncMaintenanceFromContact } from "@/utils/maintenance";
+import { flush as flushTrack } from "@/utils/track";
 
 const themeStore = useThemeStore();
 const INVITE_CODE_KEY = "mall_level_invite_code";
@@ -76,6 +77,10 @@ onShow(async (options) => {
   await themeStore.loadCurrent();
   await refreshMaintenanceState();
   showCartBadge();
+});
+
+onHide(() => {
+  void flushTrack();
 });
 </script>
 

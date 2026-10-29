@@ -26,6 +26,7 @@ import { quickAddCart } from "@/composables/useQuickAddCart";
 const props = defineProps<{
   productId: number;
   multiSpec?: boolean;
+  source?: string;
 }>();
 
 const themeStore = useThemeStore();
@@ -46,7 +47,7 @@ async function onTap() {
   if (busy.value) return;
   busy.value = true;
   try {
-    await quickAddCart(props.productId, props.multiSpec);
+    await quickAddCart(props.productId, props.multiSpec, props.source || "list");
   } finally {
     busy.value = false;
   }
