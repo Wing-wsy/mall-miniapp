@@ -6,7 +6,7 @@
 
 ```powershell
 $env:Path = "D:\nodejs;" + $env:Path
-cd D:\mall\mall-miniapp
+cd /Users/wing/project/mall/mall-miniapp
 npm install
 
 # 微信小程序（产物在 dist/dev/mp-weixin，用微信开发者工具打开）
